@@ -975,12 +975,11 @@ void Selection::render_sidebar_hints(const std::string& sidebar_field) const
                 orient_matrix = (*m_volumes)[*m_list.begin()]->get_instance_transformation().get_matrix(true, false, true, true);
             else if (boost::starts_with(sidebar_field, "rotation"))
             {
-                const Vec3d& rotation = (*m_volumes)[*m_list.begin()]->get_instance_transformation().get_rotation();
-
                 if (boost::ends_with(sidebar_field, "x"))
                     orient_matrix = (*m_volumes)[*m_list.begin()]->get_instance_transformation().get_matrix(true, false, true, true);
                 else if (boost::ends_with(sidebar_field, "y"))
                 {
+                    const Vec3d& rotation = (*m_volumes)[*m_list.begin()]->get_instance_transformation().get_rotation();
                     if (rotation(0) == 0.0)
                         orient_matrix = (*m_volumes)[*m_list.begin()]->get_instance_transformation().get_matrix(true, false, true, true);
                     else
