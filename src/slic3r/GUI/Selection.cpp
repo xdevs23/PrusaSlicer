@@ -968,13 +968,8 @@ void Selection::render_sidebar_hints(const std::string& sidebar_field) const
     if (is_single_full_instance())
     {
         ::glTranslated(center(0), center(1), center(2));
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
         if (!boost::starts_with(sidebar_field, "position"))
-//        if (boost::starts_with(sidebar_field, "scale"))
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
         {
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
             Transform3d orient_matrix = Transform3d::Identity();
             if (boost::starts_with(sidebar_field, "scale"))
                 orient_matrix = (*m_volumes)[*m_list.begin()]->get_instance_transformation().get_matrix(true, false, true, true);
@@ -991,39 +986,9 @@ void Selection::render_sidebar_hints(const std::string& sidebar_field) const
                     else
                         orient_matrix.rotate(Eigen::AngleAxisd(rotation(2), Vec3d::UnitZ()));
                 }
-//                else if (boost::ends_with(sidebar_field, "z"))
-//                {
-//                    if ((rotation(0) == 0.0) && (rotation(1) == 0.0))
-//                        orient_matrix = (*m_volumes)[*m_list.begin()]->get_instance_transformation().get_matrix(true, false, true, true);
-//                    else
-//                    {
-//                        orient_matrix.rotate(Eigen::AngleAxisd(rotation(1), Vec3d::UnitY()));
-//                        orient_matrix.rotate(Eigen::AngleAxisd(rotation(0), Vec3d::UnitX()));
-//                    }
-//                }
             }
 
             ::glMultMatrixd(orient_matrix.data());
-
-/*
-            bool instance_transform = boost::starts_with(sidebar_field, "scale") || boost::ends_with(sidebar_field, "x");
-            if (!instance_transform)
-            {
-                const Vec3d& rotation = (*m_volumes)[*m_list.begin()]->get_instance_transformation().get_rotation();
-                instance_transform |= (boost::ends_with(sidebar_field, "y") && (rotation(0) == 0.0));
-                instance_transform |= (boost::ends_with(sidebar_field, "z") && (rotation(0) == 0.0) && (rotation(1) == 0.0));
-            }
-
-            if (instance_transform)
-            {
-                Transform3d orient_matrix = (*m_volumes)[*m_list.begin()]->get_instance_transformation().get_matrix(true, false, true, true);
-                ::glMultMatrixd(orient_matrix.data());
-            }
-*/
-
-//            Transform3d orient_matrix = (*m_volumes)[*m_list.begin()]->get_instance_transformation().get_matrix(true, false, true, true);
-//            ::glMultMatrixd(orient_matrix.data());
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
         }
     }
     else if (is_single_volume() || is_single_modifier())
