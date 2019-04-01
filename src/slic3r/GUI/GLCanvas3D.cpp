@@ -380,7 +380,7 @@ void GLCanvas3D::LayersEditing::render_overlay(const GLCanvas3D& canvas) const
 
 float GLCanvas3D::LayersEditing::get_cursor_z_relative(const GLCanvas3D& canvas)
 {
-    const Point& mouse_pos = canvas.get_local_mouse_position();
+    const Vec2d mouse_pos = canvas.get_local_mouse_position();
     const Rect& rect = get_bar_rect_screen(canvas);
     float x = (float)mouse_pos(0);
     float y = (float)mouse_pos(1);
@@ -3915,19 +3915,25 @@ Size GLCanvas3D::get_canvas_size() const
     w *= factor;
     h *= factor;
 #else
-    const float factor = 1.0;
+    const float factor = 1.0f;
 #endif
 
     return Size(w, h, factor);
 }
 
-Point GLCanvas3D::get_local_mouse_position() const
+Vec2d GLCanvas3D::get_local_mouse_position() const
 {
     if (m_canvas == nullptr)
-        return Point();
+		return Vec2d::Zero();
 
     wxPoint mouse_pos = m_canvas->ScreenToClient(wxGetMousePosition());
-    return Point(mouse_pos.x, mouse_pos.y);
+    const double factor = 
+#if ENABLE_RETINA_GL
+        m_retina_helper->get_scale_factor();
+#else
+        1.0;
+#endif
+    return Vec2d(factor * mouse_pos.x, factor * mouse_pos.y);
 }
 
 void GLCanvas3D::reset_legend_texture()
@@ -4397,11 +4403,13 @@ void GLCanvas3D::_resize(unsigned int w, unsigned int h)
     if ((m_canvas == nullptr) && (m_context == nullptr))
         return;
 
-    wxGetApp().imgui()->set_display_size((float)w, (float)h);
+    auto *imgui = wxGetApp().imgui();
+    imgui->set_display_size((float)w, (float)h);
+    imgui->set_font_size(m_canvas->GetFont().GetPixelSize().y);
 #if ENABLE_RETINA_GL
-    wxGetApp().imgui()->set_style_scaling(m_retina_helper->get_scale_factor());
+    imgui->set_style_scaling(m_retina_helper->get_scale_factor());
 #else
-    wxGetApp().imgui()->set_style_scaling(m_canvas->GetContentScaleFactor());
+    imgui->set_style_scaling(m_canvas->GetContentScaleFactor());
 #endif
 
     // ensures that this canvas is current
@@ -5016,7 +5024,7 @@ void GLCanvas3D::_render_sla_slices() const
         }
 
         if ((bottom_obj_triangles.empty() || bottom_sup_triangles.empty() || top_obj_triangles.empty() || top_sup_triangles.empty()) &&
-            obj->is_step_done(slaposIndexSlices) && !obj->get_slice_index().empty())
+            obj->is_step_done(slaposSliceSupports) && !obj->get_slice_index().empty())
         {
             double layer_height         = print->default_object_config().layer_height.value;
             double initial_layer_height = print->material_config().initial_layer_height.value;
@@ -6218,7 +6226,7 @@ void GLCanvas3D::_load_shells_sla()
     int obj_idx = 0;
     for (const SLAPrintObject* obj : print->objects())
     {
-        if (!obj->is_step_done(slaposIndexSlices))
+        if (!obj->is_step_done(slaposSliceSupports))
             continue;
 
         unsigned int initial_volumes_count = (unsigned int)m_volumes.volumes.size();
