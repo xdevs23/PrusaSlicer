@@ -42,11 +42,11 @@ namespace {
 // should add up to 100 (%)
 const std::array<unsigned, slaposCount>     OBJ_STEP_LEVELS =
 {
-    10,     // slaposObjectSlice,
-    30,     // slaposSupportPoints,
-    25,     // slaposSupportTree,
-    25,     // slaposBasePool,
-    10,     // slaposSliceSupports,
+    30,     // slaposObjectSlice,
+    20,     // slaposSupportPoints,
+    10,     // slaposSupportTree,
+    10,     // slaposBasePool,
+    30,     // slaposSliceSupports,
 };
 
 const std::array<std::string, slaposCount> OBJ_STEP_LABELS =
@@ -61,8 +61,8 @@ const std::array<std::string, slaposCount> OBJ_STEP_LABELS =
 // Should also add up to 100 (%)
 const std::array<unsigned, slapsCount> PRINT_STEP_LEVELS =
 {
-    5,      // slapsMergeSlicesAndEval
-    95,     // slapsRasterize
+    10,      // slapsMergeSlicesAndEval
+    90,      // slapsRasterize
 };
 
 const std::array<std::string, slapsCount> PRINT_STEP_LABELS =
@@ -93,7 +93,10 @@ static Transform3d sla_trafo(const ModelObject &model_object)
     offset(0) = 0.;
     offset(1) = 0.;
     rotation(2) = 0.;
-    return Geometry::assemble_transform(offset, rotation, model_instance.get_scaling_factor(), model_instance.get_mirror());
+    Transform3d trafo = Geometry::assemble_transform(offset, rotation, model_instance.get_scaling_factor(), model_instance.get_mirror());
+    if (model_instance.is_left_handed())
+		trafo = Eigen::Scaling(Vec3d(-1., 1., 1.)) * trafo;
+    return trafo;
 }
 
 // List of instances, where the ModelInstance transformation is a composite of sla_trafo and the transformation defined by SLAPrintObject::Instance.
@@ -399,7 +402,7 @@ SLAPrint::ApplyStatus SLAPrint::apply(const Model &model, const DynamicPrintConf
 
             // FIXME: this invalidates the transformed mesh in SLAPrintObject
             // which is expensive to calculate (especially the raw_mesh() call)
-            print_object->set_trafo(sla_trafo(model_object));
+            print_object->set_trafo(sla_trafo(model_object), model_object.instances.front()->is_left_handed());
 
             print_object->set_instances(new_instances);
             print_object->config_apply(config, true);
