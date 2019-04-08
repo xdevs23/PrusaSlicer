@@ -1062,11 +1062,11 @@ void SLAPrint::process()
                         hole.reserve(h.points.size() + 1);
 
                         if(needreverse)
-                            for(auto& p : h.points)
-                                hole.emplace_back(p.x(), p.y());
-                        else
                             for(auto it = h.points.rbegin(); it != h.points.rend(); ++it)
                                 hole.emplace_back(it->x(), it->y());
+                        else
+                            for(auto& p : h.points)
+                                hole.emplace_back(p.x(), p.y());
                     }
 
                     if(is_lefthanded) {
