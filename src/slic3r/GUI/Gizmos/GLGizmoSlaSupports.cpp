@@ -96,11 +96,16 @@ void GLGizmoSlaSupports::on_render(const Selection& selection) const
 
 void GLGizmoSlaSupports::render_selection_rectangle() const
 {
-    if (!m_selection_rectangle_active)
+    if (m_selection_rectangle_status == srOff)
         return;
 
     glsafe(::glLineWidth(1.5f));
-    float render_color[3] = {1.f, 0.f, 0.f};
+    float render_color[3] = {0.f, 1.f, 0.f};
+    if (m_selection_rectangle_status == srDeselect) {
+        render_color[0] = 1.f;
+        render_color[1] = 0.3f;
+        render_color[2] = 0.3f;
+    }
     glsafe(::glColor3fv(render_color));
 
     glsafe(::glPushAttrib(GL_TRANSFORM_BIT));   // remember current MatrixMode
@@ -316,31 +321,35 @@ std::pair<Vec3f, Vec3f> GLGizmoSlaSupports::unproject_on_mesh(const Vec2d& mouse
 // The gizmo has an opportunity to react - if it does, it should return true so that the Canvas3D is
 // aware that the event was reacted to and stops trying to make different sense of it. If the gizmo
 // concludes that the event was not intended for it, it should return false.
-bool GLGizmoSlaSupports::gizmo_event(SLAGizmoEventType action, const Vec2d& mouse_position, bool shift_down)
+bool GLGizmoSlaSupports::gizmo_event(SLAGizmoEventType action, const Vec2d& mouse_position, bool shift_down, bool alt_down, bool control_down)
 {
     if (m_editing_mode) {
 
-        // left down - show the selection rectangle:
-        if (action == SLAGizmoEventType::LeftDown && shift_down) {
+        // left down with shift - show the selection rectangle:
+        if (action == SLAGizmoEventType::LeftDown && (shift_down || alt_down || control_down)) {
             if (m_hover_id == -1) {
-                m_selection_rectangle_active = true;
-                m_selection_rectangle_start_corner = mouse_position;
-                m_selection_rectangle_end_corner = mouse_position;
-                m_canvas_width = m_parent.get_canvas_size().get_width();
-                m_canvas_height = m_parent.get_canvas_size().get_height();
+                if (shift_down || alt_down) {
+                    m_selection_rectangle_status = shift_down ? srSelect : srDeselect;
+                    m_selection_rectangle_start_corner = mouse_position;
+                    m_selection_rectangle_end_corner = mouse_position;
+                    m_canvas_width = m_parent.get_canvas_size().get_width();
+                    m_canvas_height = m_parent.get_canvas_size().get_height();
+                }
             }
             else {
                 if (m_editing_mode_cache[m_hover_id].selected)
                     unselect_point(m_hover_id);
-                else
-                    select_point(m_hover_id);
+                else {
+                    if (!alt_down)
+                        select_point(m_hover_id);
+                }
             }
 
             return true;
         }
 
         // left down without selection rectangle - place point on the mesh:
-        if (action == SLAGizmoEventType::LeftDown && !m_selection_rectangle_active && !shift_down) {
+        if (action == SLAGizmoEventType::LeftDown && m_selection_rectangle_status == srOff && !shift_down) {
             // If any point is in hover state, this should initiate its move - return control back to GLCanvas:
             if (m_hover_id != -1)
                 return false;
@@ -365,7 +374,7 @@ bool GLGizmoSlaSupports::gizmo_event(SLAGizmoEventType action, const Vec2d& mous
         }
 
         // left up with selection rectangle - select points inside the rectangle:
-        if ((action == SLAGizmoEventType::LeftUp || action == SLAGizmoEventType::ShiftUp) && m_selection_rectangle_active) {
+        if ((action == SLAGizmoEventType::LeftUp || action == SLAGizmoEventType::ShiftUp || action == SLAGizmoEventType::AltUp) && m_selection_rectangle_status != srOff) {
             const Transform3d& instance_matrix = m_model_object->instances[m_active_instance]->get_transformation().get_matrix();
             const Camera& camera = m_parent.get_camera();
             const std::array<int, 4>& viewport = camera.get_viewport();
@@ -405,11 +414,15 @@ bool GLGizmoSlaSupports::gizmo_event(SLAGizmoEventType action, const Vec2d& mous
                         if (hits.size() > 1 || hits.front().t > 0.001f)
                             is_obscured = true;
 
-                    if (!is_obscured)
-                        select_point(i);
+                    if (!is_obscured) {
+                        if (m_selection_rectangle_status == srDeselect)
+                            unselect_point(i);
+                        else
+                            select_point(i);
+                    }
                 }
             }
-            m_selection_rectangle_active = false;
+            m_selection_rectangle_status = srOff;
             return true;
         }
 
@@ -427,8 +440,9 @@ bool GLGizmoSlaSupports::gizmo_event(SLAGizmoEventType action, const Vec2d& mous
                 return true; // point has been placed and the button not released yet
                              // this prevents GLCanvas from starting scene rotation
 
-            if (m_selection_rectangle_active)  {
+            if (m_selection_rectangle_status != srOff)  {
                 m_selection_rectangle_end_corner = mouse_position;
+                m_selection_rectangle_status = shift_down ? srSelect : srDeselect;
                 return true;
             }
 
@@ -726,40 +740,45 @@ std::string GLGizmoSlaSupports::on_get_name() const
 
 void GLGizmoSlaSupports::on_set_state()
 {
-    if (m_state == On && m_old_state != On) { // the gizmo was just turned on
+    // Following is called through CallAfter, because otherwise there was a problem
+    // on OSX with the wxMessageDialog being shown several times when clicked into.
 
-        if (is_mesh_update_necessary())
-            update_mesh();
+    wxGetApp().CallAfter([this]() {
+        if (m_state == On && m_old_state != On) { // the gizmo was just turned on
 
-        // we'll now reload support points:
-        if (m_model_object)
-            editing_mode_reload_cache();
+            if (is_mesh_update_necessary())
+                update_mesh();
 
-        m_parent.toggle_model_objects_visibility(false);
-        if (m_model_object)
-            m_parent.toggle_model_objects_visibility(true, m_model_object, m_active_instance);
+            // we'll now reload support points:
+            if (m_model_object)
+                editing_mode_reload_cache();
 
-        // Set default head diameter from config.
-        const DynamicPrintConfig& cfg = wxGetApp().preset_bundle->sla_prints.get_edited_preset().config;
-        m_new_point_head_diameter = static_cast<const ConfigOptionFloat*>(cfg.option("support_head_front_diameter"))->value;
-    }
-    if (m_state == Off && m_old_state != Off) { // the gizmo was just turned Off
-        if (m_model_object) {
-            if (m_unsaved_changes) {
-                wxMessageDialog dlg(GUI::wxGetApp().plater(), _(L("Do you want to save your manually edited support points ?\n")),
-                                    _(L("Save changes?")), wxICON_QUESTION | wxYES | wxNO);
-                if (dlg.ShowModal() == wxID_YES)
-                    editing_mode_apply_changes();
-                else
-                    editing_mode_discard_changes();
-            }
+            m_parent.toggle_model_objects_visibility(false);
+            if (m_model_object)
+                m_parent.toggle_model_objects_visibility(true, m_model_object, m_active_instance);
+
+            // Set default head diameter from config.
+            const DynamicPrintConfig& cfg = wxGetApp().preset_bundle->sla_prints.get_edited_preset().config;
+            m_new_point_head_diameter = static_cast<const ConfigOptionFloat*>(cfg.option("support_head_front_diameter"))->value;
         }
+        if (m_state == Off && m_old_state != Off) { // the gizmo was just turned Off
+            if (m_model_object) {
+                if (m_unsaved_changes) {
+                    wxMessageDialog dlg(GUI::wxGetApp().mainframe, _(L("Do you want to save your manually edited support points ?\n")),
+                                        _(L("Save changes?")), wxICON_QUESTION | wxYES | wxNO);
+                    if (dlg.ShowModal() == wxID_YES)
+                        editing_mode_apply_changes();
+                    else
+                        editing_mode_discard_changes();
+                }
+            }
 
-        m_parent.toggle_model_objects_visibility(true);
-        m_editing_mode = false; // so it is not active next time the gizmo opens
-        m_editing_mode_cache.clear();
-    }
-    m_old_state = m_state;
+            m_parent.toggle_model_objects_visibility(true);
+            m_editing_mode = false; // so it is not active next time the gizmo opens
+            m_editing_mode_cache.clear();
+        }
+        m_old_state = m_state;
+    });
 }
 
 
