@@ -2204,6 +2204,9 @@ void GLCanvas3D::on_idle(wxIdleEvent& evt)
 
 void GLCanvas3D::on_char(wxKeyEvent& evt)
 {
+    if (!m_initialized)
+        return;
+
     // see include/wx/defs.h enum wxKeyCode
     int keyCode = evt.GetKeyCode();
     int ctrlMask = wxMOD_CONTROL;
@@ -2222,9 +2225,12 @@ void GLCanvas3D::on_char(wxKeyEvent& evt)
 //#endif /* __APPLE__ */
     if ((evt.GetModifiers() & ctrlMask) != 0) {
         switch (keyCode) {
+#ifdef __APPLE__
         case 'a':
         case 'A':
+#else /* __APPLE__ */
         case WXK_CONTROL_A:
+#endif /* __APPLE__ */
                 post_event(SimpleEvent(EVT_GLCANVAS_SELECT_ALL));
         break;
 #ifdef __APPLE__
@@ -2313,6 +2319,9 @@ void GLCanvas3D::on_key(wxKeyEvent& evt)
 
 void GLCanvas3D::on_mouse_wheel(wxMouseEvent& evt)
 {
+    if (!m_initialized)
+        return;
+
     // Ignore the wheel events if the middle button is pressed.
     if (evt.MiddleIsDown())
         return;
@@ -2566,8 +2575,7 @@ void GLCanvas3D::on_mouse(wxMouseEvent& evt)
                         m_selection.remove(m_hover_volume_id);
                     else
                     {
-                        bool add_as_single = !already_selected && !ctrl_down;
-                        m_selection.add(m_hover_volume_id, add_as_single);
+                        m_selection.add(m_hover_volume_id, !ctrl_down);
                         m_mouse.drag.move_requires_threshold = !already_selected;
                         if (already_selected)
                             m_mouse.set_move_start_threshold_position_2D_as_invalid();
@@ -3296,8 +3304,9 @@ bool GLCanvas3D::_init_toolbar()
 
 bool GLCanvas3D::_set_current()
 {
-    if ((m_canvas != nullptr) && (m_context != nullptr))
+    if (_is_shown_on_screen() && (m_context != nullptr)) {
         return m_canvas->SetCurrent(*m_context);
+    }
 
     return false;
 }

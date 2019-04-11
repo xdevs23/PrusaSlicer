@@ -286,7 +286,7 @@ wxBitmapComboBox(parent, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(15 *
 #ifdef __WINDOWS__
     edit_btn->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 #endif
-    edit_btn->SetBitmap(create_scaled_bitmap("cog"));
+    edit_btn->SetBitmap(create_scaled_bitmap(this, "cog"));
     edit_btn->SetToolTip(_(L("Click to edit preset")));
 
     edit_btn->Bind(wxEVT_BUTTON, ([preset_type, this](wxCommandEvent)
@@ -747,6 +747,7 @@ Sidebar::Sidebar(Plater *parent)
             p->plater->export_gcode();
         else
             p->plater->reslice();
+		p->plater->select_view_3D("Preview");
     });
     p->btn_send_gcode->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { p->plater->send_gcode(); });
 }
@@ -2288,20 +2289,14 @@ unsigned int Plater::priv::update_background_process(bool force_validation)
         this->sidebar->show_sliced_info_sizer(false);
         // Reset preview canvases. If the print has been invalidated, the preview canvases will be cleared.
         // Otherwise they will be just refreshed.
-        switch (this->printer_technology) {
-        case ptFFF:
-            if (this->preview != nullptr)
-                // If the preview is not visible, the following line just invalidates the preview,
-                // but the G-code paths are calculated first once the preview is made visible.
-                this->preview->reload_print();
-            // We also need to reload 3D scene because of the wipe tower preview box
-            if (this->config->opt_bool("wipe_tower"))
-                return_state |= UPDATE_BACKGROUND_PROCESS_REFRESH_SCENE;
-            break;
-        case ptSLA:
-            return_state |= UPDATE_BACKGROUND_PROCESS_REFRESH_SCENE;
-            break;
-        }
+		if (this->preview != nullptr)
+			// If the preview is not visible, the following line just invalidates the preview,
+			// but the G-code paths or SLA preview are calculated first once the preview is made visible.
+			this->preview->reload_print();
+		// In FDM mode, we need to reload the 3D scene because of the wipe tower preview box.
+		// In SLA mode, we need to reload the 3D scene every time to show the support structures.
+		if (this->printer_technology == ptSLA || (this->printer_technology == ptFFF && this->config->opt_bool("wipe_tower")))
+			return_state |= UPDATE_BACKGROUND_PROCESS_REFRESH_SCENE;
     }
 
     if ((invalidated != Print::APPLY_STATUS_UNCHANGED || force_validation) && ! this->background_process.empty()) {
@@ -2603,25 +2598,21 @@ void Plater::priv::on_slicing_update(SlicingStatusEvent &evt)
         this->statusbar()->set_progress(evt.status.percent);
         this->statusbar()->set_status_text(_(L(evt.status.text)) + wxString::FromUTF8("…"));
     }
-    if (evt.status.flags & PrintBase::SlicingStatus::RELOAD_SCENE) {
+    if (evt.status.flags & (PrintBase::SlicingStatus::RELOAD_SCENE || PrintBase::SlicingStatus::RELOAD_SLA_SUPPORT_POINTS)) {
         switch (this->printer_technology) {
         case ptFFF:
             this->update_fff_scene();
             break;
         case ptSLA:
+            // If RELOAD_SLA_SUPPORT_POINTS, then the SLA gizmo is updated (reload_scene calls update_gizmos_data)
             if (view3D->is_dragging())
                 delayed_scene_refresh = true;
             else
                 this->update_sla_scene();
             break;
         }
-    }
-    if (evt.status.flags & PrintBase::SlicingStatus::RELOAD_SLA_SUPPORT_POINTS) {
-        // Update SLA gizmo  (reload_scene calls update_gizmos_data)
-        q->canvas3D()->reload_scene(true);
-    }
-    if (evt.status.flags & PrintBase::SlicingStatus::RELOAD_SLA_PREVIEW) {
-        // Update the SLA preview
+    } else if (evt.status.flags & PrintBase::SlicingStatus::RELOAD_SLA_PREVIEW) {
+        // Update the SLA preview. Only called if not RELOAD_SLA_SUPPORT_POINTS, as the block above will refresh the preview anyways.
         this->preview->reload_print();
     }
 }
@@ -3051,7 +3042,7 @@ void Plater::priv::set_bed_shape(const Pointfs& shape)
 
 bool Plater::priv::can_delete() const
 {
-    return !get_selection().is_empty();
+    return !get_selection().is_empty() && !get_selection().is_wipe_tower();
 }
 
 bool Plater::priv::can_delete_all() const
@@ -3302,7 +3293,7 @@ void Plater::set_number_of_copies(/*size_t num*/)
 
 bool Plater::is_selection_empty() const
 {
-    return p->get_selection().is_empty();
+    return p->get_selection().is_empty() || p->get_selection().is_wipe_tower();
 }
 
 void Plater::cut(size_t obj_idx, size_t instance_idx, coordf_t z, bool keep_upper, bool keep_lower, bool rotate_lower)
