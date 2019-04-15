@@ -143,8 +143,7 @@ ObjectInfo::ObjectInfo(wxWindow *parent) :
     info_manifold_text->SetFont(wxGetApp().small_font());
     info_manifold = new wxStaticText(parent, wxID_ANY, "");
     info_manifold->SetFont(wxGetApp().small_font());
-    wxBitmap bitmap(GUI::from_u8(Slic3r::var("error.png")), wxBITMAP_TYPE_PNG);
-    manifold_warning_icon = new wxStaticBitmap(parent, wxID_ANY, bitmap);
+    manifold_warning_icon = new wxStaticBitmap(parent, wxID_ANY, create_scaled_bitmap(parent, "exclamation"));
     auto *sizer_manifold = new wxBoxSizer(wxHORIZONTAL);
     sizer_manifold->Add(info_manifold_text, 0);
     sizer_manifold->Add(manifold_warning_icon, 0, wxLEFT, 2);
@@ -1406,6 +1405,8 @@ Plater::priv::priv(Plater *q, MainFrame *main_frame)
     view3D_canvas->Bind(EVT_GLTOOLBAR_DELETE, [q](SimpleEvent&) { q->remove_selected(); });
     view3D_canvas->Bind(EVT_GLTOOLBAR_DELETE_ALL, [this](SimpleEvent&) { reset(); });
     view3D_canvas->Bind(EVT_GLTOOLBAR_ARRANGE, [this](SimpleEvent&) { arrange(); });
+    view3D_canvas->Bind(EVT_GLTOOLBAR_COPY, [q](SimpleEvent&) { q->copy_selection_to_clipboard(); });
+    view3D_canvas->Bind(EVT_GLTOOLBAR_PASTE, [q](SimpleEvent&) { q->paste_from_clipboard(); });
     view3D_canvas->Bind(EVT_GLTOOLBAR_MORE, [q](SimpleEvent&) { q->increase_instances(); });
     view3D_canvas->Bind(EVT_GLTOOLBAR_FEWER, [q](SimpleEvent&) { q->decrease_instances(); });
     view3D_canvas->Bind(EVT_GLTOOLBAR_SPLIT_OBJECTS, &priv::on_action_split_objects, this);
@@ -1632,10 +1633,26 @@ std::vector<size_t> Plater::priv::load_files(const std::vector<fs::path>& input_
                         break;
                     }
 
+                    // is there any advanced config data ?
+                    auto opt_keys = model_object->config.keys();
+                    if (!opt_keys.empty() && !((opt_keys.size() == 1) && (opt_keys[0] == "extruder")))
+                    {
+                        advanced = true;
+                        break;
+                    }
+
                     // is there any modifier ?
                     for (const ModelVolume* model_volume : model_object->volumes)
                     {
                         if (!model_volume->is_model_part())
+                        {
+                            advanced = true;
+                            break;
+                        }
+
+                        // is there any advanced config data ?
+                        opt_keys = model_volume->config.keys();
+                        if (!opt_keys.empty() && !((opt_keys.size() == 1) && (opt_keys[0] == "extruder")))
                         {
                             advanced = true;
                             break;
@@ -1648,11 +1665,11 @@ std::vector<size_t> Plater::priv::load_files(const std::vector<fs::path>& input_
 
                 if (advanced)
                 {
-                    wxMessageDialog dlg(q, _(L("This file cannot be loaded in simple mode. Do you want to switch to expert mode?\n")),
+                    wxMessageDialog dlg(q, _(L("This file cannot be loaded in a simple mode. Do you want to switch to an advanced mode?\n")),
                         _(L("Detected advanced data")), wxICON_WARNING | wxYES | wxNO);
                     if (dlg.ShowModal() == wxID_YES)
                     {
-                        Slic3r::GUI::wxGetApp().save_mode(comExpert);
+                        Slic3r::GUI::wxGetApp().save_mode(comAdvanced);
                         view3D->set_as_dirty();
                     }
                     else
@@ -2820,17 +2837,17 @@ bool Plater::priv::init_common_menu(wxMenu* menu, const bool is_part/* = false*/
     wxMenuItem* item_delete = nullptr;
     if (is_part) {
         item_delete = append_menu_item(menu, wxID_ANY, _(L("Delete")) + "\tDel", _(L("Remove the selected object")),
-            [this](wxCommandEvent&) { q->remove_selected(); }, "remove");
+            [this](wxCommandEvent&) { q->remove_selected(); }, "delete");
 
         sidebar->obj_list()->append_menu_item_export_stl(menu);
     }
     else {
         wxMenuItem* item_increase = append_menu_item(menu, wxID_ANY, _(L("Increase copies")) + "\t+", _(L("Place one more copy of the selected object")),
-            [this](wxCommandEvent&) { q->increase_instances(); }, "instance_add");
+            [this](wxCommandEvent&) { q->increase_instances(); }, "add_copies");
         wxMenuItem* item_decrease = append_menu_item(menu, wxID_ANY, _(L("Decrease copies")) + "\t-", _(L("Remove one copy of the selected object")),
-            [this](wxCommandEvent&) { q->decrease_instances(); }, "instance_remove");
+            [this](wxCommandEvent&) { q->decrease_instances(); }, "remove_copies");
         wxMenuItem* item_set_number_of_copies = append_menu_item(menu, wxID_ANY, _(L("Set number of copies")) + dots, _(L("Change the number of copies of the selected object")),
-            [this](wxCommandEvent&) { q->set_number_of_copies(); }, "textfield.png");
+            [this](wxCommandEvent&) { q->set_number_of_copies(); }, "number_of_copies");
 
         items_increase.push_back(item_increase);
         items_decrease.push_back(item_decrease);
@@ -2838,7 +2855,7 @@ bool Plater::priv::init_common_menu(wxMenu* menu, const bool is_part/* = false*/
 
         // Delete menu was moved to be after +/- instace to make it more difficult to be selected by mistake.
         item_delete = append_menu_item(menu, wxID_ANY, _(L("Delete")) + "\tDel", _(L("Remove the selected object")),
-            [this](wxCommandEvent&) { q->remove_selected(); }, "remove");
+            [this](wxCommandEvent&) { q->remove_selected(); }, "delete");
 
         menu->AppendSeparator();
         wxMenuItem* item_instance_to_object = sidebar->obj_list()->append_menu_item_instance_to_object(menu);
@@ -2868,11 +2885,11 @@ bool Plater::priv::init_common_menu(wxMenu* menu, const bool is_part/* = false*/
         return false;
 
     append_menu_item(mirror_menu, wxID_ANY, _(L("Along X axis")), _(L("Mirror the selected object along the X axis")),
-        [this](wxCommandEvent&) { mirror(X); }, "bullet_red.png", menu);
+        [this](wxCommandEvent&) { mirror(X); }, "mark_X", menu);
     append_menu_item(mirror_menu, wxID_ANY, _(L("Along Y axis")), _(L("Mirror the selected object along the Y axis")),
-        [this](wxCommandEvent&) { mirror(Y); }, "bullet_green.png", menu);
+        [this](wxCommandEvent&) { mirror(Y); }, "mark_Y", menu);
     append_menu_item(mirror_menu, wxID_ANY, _(L("Along Z axis")), _(L("Mirror the selected object along the Z axis")),
-        [this](wxCommandEvent&) { mirror(Z); }, "bullet_blue.png", menu);
+        [this](wxCommandEvent&) { mirror(Z); }, "mark_Z", menu);
 
     wxMenuItem* item_mirror = append_submenu(menu, mirror_menu, wxID_ANY, _(L("Mirror")), _(L("Mirror the selected object")));
 
@@ -2893,9 +2910,9 @@ bool Plater::priv::complit_init_object_menu()
         return false;
 
     wxMenuItem* item_split_objects = append_menu_item(split_menu, wxID_ANY, _(L("To objects")), _(L("Split the selected object into individual objects")),
-        [this](wxCommandEvent&) { split_object(); }, "split_objects.png", &object_menu);
+        [this](wxCommandEvent&) { split_object(); }, "split_object_SMALL", &object_menu);
     wxMenuItem* item_split_volumes = append_menu_item(split_menu, wxID_ANY, _(L("To parts")), _(L("Split the selected object into individual sub-parts")),
-        [this](wxCommandEvent&) { split_volume(); }, "split_parts.png", &object_menu);
+        [this](wxCommandEvent&) { split_volume(); }, "split_parts_SMALL", &object_menu);
 
     wxMenuItem* item_split = append_submenu(&object_menu, split_menu, wxID_ANY, _(L("Split")), _(L("Split the selected object"))/*, "shape_ungroup.png"*/);
     object_menu.AppendSeparator();
@@ -2915,7 +2932,7 @@ bool Plater::priv::complit_init_object_menu()
 bool Plater::priv::complit_init_sla_object_menu()
 {
     wxMenuItem* item_split = append_menu_item(&sla_object_menu, wxID_ANY, _(L("Split")), _(L("Split the selected object into individual objects")),
-        [this](wxCommandEvent&) { split_object(); }, "shape_ungroup_o.png");
+        [this](wxCommandEvent&) { split_object(); }, "split_object_SMALL");
 
     sla_object_menu.AppendSeparator();
 
@@ -2935,7 +2952,7 @@ bool Plater::priv::complit_init_sla_object_menu()
 bool Plater::priv::complit_init_part_menu()
 {
     wxMenuItem* item_split = append_menu_item(&part_menu, wxID_ANY, _(L("Split")), _(L("Split the selected object into individual sub-parts")),
-        [this](wxCommandEvent&) { split_volume(); }, "shape_ungroup_p.png");
+        [this](wxCommandEvent&) { split_volume(); }, "split_parts_SMALL");
 
     part_menu.AppendSeparator();
 
@@ -3224,8 +3241,9 @@ void Plater::increase_instances(size_t num)
 
     bool was_one_instance = model_object->instances.size()==1;
         
-    float offset = 10.0;
-    for (size_t i = 0; i < num; i++, offset += 10.0) {
+    double offset_base = canvas3D()->get_size_proportional_to_max_bed_size(0.05);
+    double offset = offset_base;
+    for (size_t i = 0; i < num; i++, offset += offset_base) {
         Vec3d offset_vec = model_instance->get_offset() + Vec3d(offset, offset, 0.0);
         model_object->add_instance(offset_vec, model_instance->get_scaling_factor(), model_instance->get_rotation(), model_instance->get_mirror());
 //        p->print.get_object(obj_idx)->add_copy(Slic3r::to_2d(offset_vec));
@@ -3696,9 +3714,42 @@ void Plater::changed_object(int obj_idx)
     this->p->schedule_background_process();
 }
 
+void Plater::schedule_background_process()
+{
+    this->p->schedule_background_process();    
+}
+
 void Plater::fix_through_netfabb(const int obj_idx, const int vol_idx/* = -1*/) { p->fix_through_netfabb(obj_idx, vol_idx); }
 
 void Plater::update_object_menu() { p->update_object_menu(); }
+
+void Plater::copy_selection_to_clipboard()
+{
+    p->view3D->get_canvas3d()->get_selection().copy_to_clipboard();
+}
+
+void Plater::paste_from_clipboard()
+{
+    p->view3D->get_canvas3d()->get_selection().paste_from_clipboard();
+}
+
+bool Plater::can_paste_from_clipboard() const
+{
+    const Selection& selection = p->view3D->get_canvas3d()->get_selection();
+    const Selection::Clipboard& clipboard = selection.get_clipboard();
+    Selection::EMode mode = clipboard.get_mode();
+
+    if (clipboard.is_empty())
+        return false;
+
+    if ((mode == Selection::Volume) && !selection.is_from_single_instance())
+        return false;
+
+    if ((mode == Selection::Instance) && (selection.get_mode() != Selection::Instance))
+        return false;
+
+    return true;
+}
 
 bool Plater::can_delete() const { return p->can_delete(); }
 bool Plater::can_delete_all() const { return p->can_delete_all(); }
@@ -3708,5 +3759,7 @@ bool Plater::can_split_to_objects() const { return p->can_split_to_objects(); }
 bool Plater::can_split_to_volumes() const { return p->can_split_to_volumes(); }
 bool Plater::can_arrange() const { return p->can_arrange(); }
 bool Plater::can_layers_editing() const { return p->can_layers_editing(); }
+bool Plater::can_copy() const { return !is_selection_empty(); }
+bool Plater::can_paste() const { return can_paste_from_clipboard(); }
 
 }}    // namespace Slic3r::GUI
