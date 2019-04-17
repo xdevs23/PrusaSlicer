@@ -15,10 +15,6 @@
 #include <boost/algorithm/string.hpp>
 #include "slic3r/Utils/FixModelByWin10.hpp"
 
-//#####################################################################################################################################################################################
-#include <wx/clipbrd.h>
-//#####################################################################################################################################################################################
-
 namespace Slic3r
 {
 namespace GUI
@@ -124,10 +120,7 @@ ObjectList::ObjectList(wxWindow* parent) :
 #endif //__WXMSW__        
     });
 
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-    this->GetMainWindow()->Bind(wxEVT_CHAR, [this](wxKeyEvent& event) { key_event(event); }); // doesn't work on OSX
-//    Bind(wxEVT_CHAR, [this](wxKeyEvent& event) { key_event(event); }); // doesn't work on OSX
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    Bind(wxEVT_CHAR, [this](wxKeyEvent& event) { key_event(event); }); // doesn't work on OSX
 
 #ifdef __WXMSW__
     GetMainWindow()->Bind(wxEVT_MOTION, [this](wxMouseEvent& event) {
@@ -148,11 +141,9 @@ ObjectList::ObjectList(wxWindow* parent) :
 
     Bind(wxCUSTOMEVT_LAST_VOLUME_IS_DELETED, [this](wxCommandEvent& e)   { last_volume_is_deleted(e.GetInt()); });
 
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-//#ifdef __WXOSX__
-//    Bind(wxEVT_KEY_DOWN, &ObjectList::OnChar, this);
-//#endif //__WXOSX__
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#ifdef __WXOSX__
+    Bind(wxEVT_KEY_DOWN, &ObjectList::OnChar, this);
+#endif //__WXOSX__
 
     Bind(wxEVT_SIZE, ([this](wxSizeEvent &e) { this->EnsureVisible(this->GetCurrentItem()); e.Skip(); }));
 }
@@ -509,18 +500,16 @@ void ObjectList::paste_objects_into_list(const std::vector<size_t>& object_idxs)
 #endif //no __WXOSX__ //__WXMSW__
 }
 
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-//void ObjectList::OnChar(wxKeyEvent& event)
-//{
-//    if (event.GetKeyCode() == WXK_BACK){
-//        remove();
-//    }
-//    else if (wxGetKeyState(wxKeyCode('A')) && wxGetKeyState(WXK_SHIFT))
-//        select_item_all_children();
-//
-//    event.Skip();
-//}
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+void ObjectList::OnChar(wxKeyEvent& event)
+{
+    if (event.GetKeyCode() == WXK_BACK){
+        remove();
+    }
+    else if (wxGetKeyState(wxKeyCode('A')) && wxGetKeyState(WXK_SHIFT))
+        select_item_all_children();
+
+    event.Skip();
+}
 
 void ObjectList::OnContextMenu(wxDataViewEvent&)
 {
@@ -589,69 +578,23 @@ void ObjectList::show_context_menu()
 
 void ObjectList::key_event(wxKeyEvent& event)
 {
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-    // see include/wx/defs.h enum wxKeyCode
-    int keyCode = event.GetKeyCode();
-    int ctrlMask = wxMOD_CONTROL;
-
-    if (keyCode == WXK_TAB)
+    if (event.GetKeyCode() == WXK_TAB)
         Navigate(event.ShiftDown() ? wxNavigationKeyEvent::IsBackward : wxNavigationKeyEvent::IsForward);
-    else if (keyCode == WXK_DELETE
+    else if (event.GetKeyCode() == WXK_DELETE
 #ifdef __WXOSX__
-        || keyCode == WXK_BACK
+        || event.GetKeyCode() == WXK_BACK
 #endif //__WXOSX__
         ) {
         remove();
     }
-    else if ((event.GetModifiers() & ctrlMask) != 0) {
-        switch (keyCode) {
-#ifdef __APPLE__
-        case 'a':
-        case 'A':
-#else /* __APPLE__ */
-        case WXK_CONTROL_A:
-#endif /* __APPLE__ */
-            select_item_all_children();
-            break;
-#ifdef __APPLE__
-        case 'c':
-        case 'C':
-#else /* __APPLE__ */
-        case WXK_CONTROL_C:
-#endif /* __APPLE__ */
-            wxPostEvent((wxEvtHandler*)wxGetApp().plater()->canvas3D()->get_wxglcanvas(), SimpleEvent(EVT_GLTOOLBAR_COPY));
-            break;
-#ifdef __APPLE__
-        case 'v':
-        case 'V':
-#else /* __APPLE__ */
-        case WXK_CONTROL_V:
-#endif /* __APPLE__ */
-            wxPostEvent((wxEvtHandler*)wxGetApp().plater()->canvas3D()->get_wxglcanvas(), SimpleEvent(EVT_GLTOOLBAR_PASTE));
-            break;
-        }
-    }
+    else if (wxGetKeyState(wxKeyCode('A')) && wxGetKeyState(WXK_CONTROL/*WXK_SHIFT*/))
+        select_item_all_children();
+    else if (wxGetKeyState(wxKeyCode('C')) && wxGetKeyState(WXK_CONTROL))
+        wxPostEvent((wxEvtHandler*)wxGetApp().plater()->canvas3D()->get_wxglcanvas(), SimpleEvent(EVT_GLTOOLBAR_COPY));
+    else if (wxGetKeyState(wxKeyCode('V')) && wxGetKeyState(WXK_CONTROL))
+        wxPostEvent((wxEvtHandler*)wxGetApp().plater()->canvas3D()->get_wxglcanvas(), SimpleEvent(EVT_GLTOOLBAR_PASTE));
     else
         event.Skip();
-
-//    if (event.GetKeyCode() == WXK_TAB)
-//        Navigate(event.ShiftDown() ? wxNavigationKeyEvent::IsBackward : wxNavigationKeyEvent::IsForward);
-//    else if (event.GetKeyCode() == WXK_DELETE
-//#ifdef __WXOSX__
-//        || event.GetKeyCode() == WXK_BACK
-//#endif //__WXOSX__
-//        ) {
-//        remove();
-//    }
-//    else if (wxGetKeyState(wxKeyCode('A')) && wxGetKeyState(WXK_CONTROL/*WXK_SHIFT*/))
-//        select_item_all_children();
-//    else if (wxGetKeyState(wxKeyCode('C')) && wxGetKeyState(WXK_CONTROL))
-//        wxPostEvent((wxEvtHandler*)wxGetApp().plater()->canvas3D()->get_wxglcanvas(), SimpleEvent(EVT_GLTOOLBAR_COPY));
-//    else if (wxGetKeyState(wxKeyCode('V')) && wxGetKeyState(WXK_CONTROL))
-//        wxPostEvent((wxEvtHandler*)wxGetApp().plater()->canvas3D()->get_wxglcanvas(), SimpleEvent(EVT_GLTOOLBAR_PASTE));
-//    else
-//        event.Skip();
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 }
 
 void ObjectList::OnBeginDrag(wxDataViewEvent &event)

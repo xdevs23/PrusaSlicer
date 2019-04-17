@@ -1363,8 +1363,8 @@ void GLCanvas3D::toggle_sla_auxiliaries_visibility(bool visible, const ModelObje
 {
     for (GLVolume* vol : m_volumes.volumes) {
         if ((mo == nullptr || m_model->objects[vol->composite_id.object_id] == mo)
-            && (instance_idx == -1 || vol->composite_id.instance_id == instance_idx)
-            && vol->composite_id.volume_id < 0)
+        && (instance_idx == -1 || vol->composite_id.instance_id == instance_idx)
+        && vol->composite_id.volume_id < 0)
             vol->is_active = visible;
     }
 
@@ -2374,6 +2374,10 @@ void GLCanvas3D::on_mouse_wheel(wxMouseEvent& evt)
         }
     }
 
+    // Inform gizmos about the event so they have the opportunity to react.
+    if (m_gizmos.on_mouse_wheel(evt, *this))
+        return;
+
     // Calculate the zoom delta and apply it to the current zoom factor
     float zoom = (float)evt.GetWheelRotation() / (float)evt.GetWheelDelta();
     set_camera_zoom(zoom);
@@ -2460,7 +2464,7 @@ void GLCanvas3D::on_mouse(wxMouseEvent& evt)
         m_mouse.position = evt.Leaving() ? Vec2d(-1.0, -1.0) : pos.cast<double>();
         render();
 #ifdef SLIC3R_DEBUG_MOUSE_EVENTS
-                printf((format_mouse_event_debug_message(evt) + " - Consumed by ImGUI\n").c_str());
+		printf((format_mouse_event_debug_message(evt) + " - Consumed by ImGUI\n").c_str());
 #endif /* SLIC3R_DEBUG_MOUSE_EVENTS */
 		return;
     }
@@ -2472,14 +2476,14 @@ void GLCanvas3D::on_mouse(wxMouseEvent& evt)
         m_mouse.position = pos.cast<double>();
         render();
 #ifdef SLIC3R_DEBUG_MOUSE_EVENTS
-                printf((format_mouse_event_debug_message(evt) + " - OnEnter workaround\n").c_str());
+		printf((format_mouse_event_debug_message(evt) + " - OnEnter workaround\n").c_str());
 #endif /* SLIC3R_DEBUG_MOUSE_EVENTS */
 		on_enter_workaround = true;
     } else 
 #endif /* __WXMSW__ */
     {
 #ifdef SLIC3R_DEBUG_MOUSE_EVENTS
-             printf((format_mouse_event_debug_message(evt) + " - other\n").c_str());
+		printf((format_mouse_event_debug_message(evt) + " - other\n").c_str());
 #endif /* SLIC3R_DEBUG_MOUSE_EVENTS */
 	}
 

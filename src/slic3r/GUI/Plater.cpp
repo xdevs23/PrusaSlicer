@@ -690,15 +690,9 @@ Sidebar::Sidebar(Plater *parent)
     p->sizer_params->Add(p->frequently_changed_parameters->get_sizer(), 0, wxEXPAND | wxTOP | wxBOTTOM, margin_10);
     
     // Object List
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-//    ObjectListWrapperPanel* object_list_panel = new ObjectListWrapperPanel(p->scrolled);
-//    p->object_list = object_list_panel->get_list();
-//    p->sizer_params->Add(object_list_panel, 1, wxEXPAND);
-
     p->object_list = new ObjectList(p->scrolled);
     p->sizer_params->Add(p->object_list->get_sizer(), 1, wxEXPAND);
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
+ 
     // Object Manipulations
     p->object_manipulation = new ObjectManipulation(p->scrolled);
     p->object_manipulation->Hide();
