@@ -578,23 +578,69 @@ void ObjectList::show_context_menu()
 
 void ObjectList::key_event(wxKeyEvent& event)
 {
-    if (event.GetKeyCode() == WXK_TAB)
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    // see include/wx/defs.h enum wxKeyCode
+    int keyCode = event.GetKeyCode();
+    int ctrlMask = wxMOD_CONTROL;
+
+    if (keyCode == WXK_TAB)
         Navigate(event.ShiftDown() ? wxNavigationKeyEvent::IsBackward : wxNavigationKeyEvent::IsForward);
-    else if (event.GetKeyCode() == WXK_DELETE
+    else if (keyCode == WXK_DELETE
 #ifdef __WXOSX__
-        || event.GetKeyCode() == WXK_BACK
+        || keyCode == WXK_BACK
 #endif //__WXOSX__
         ) {
         remove();
     }
-    else if (wxGetKeyState(wxKeyCode('A')) && wxGetKeyState(WXK_CONTROL/*WXK_SHIFT*/))
-        select_item_all_children();
-    else if (wxGetKeyState(wxKeyCode('C')) && wxGetKeyState(WXK_CONTROL))
-        wxPostEvent((wxEvtHandler*)wxGetApp().plater()->canvas3D()->get_wxglcanvas(), SimpleEvent(EVT_GLTOOLBAR_COPY));
-    else if (wxGetKeyState(wxKeyCode('V')) && wxGetKeyState(WXK_CONTROL))
-        wxPostEvent((wxEvtHandler*)wxGetApp().plater()->canvas3D()->get_wxglcanvas(), SimpleEvent(EVT_GLTOOLBAR_PASTE));
+    else if ((event.GetModifiers() & ctrlMask) != 0) {
+        switch (keyCode) {
+#ifdef __APPLE__
+        case 'a':
+        case 'A':
+#else /* __APPLE__ */
+        case WXK_CONTROL_A:
+#endif /* __APPLE__ */
+            select_item_all_children();
+            break;
+#ifdef __APPLE__
+        case 'c':
+        case 'C':
+#else /* __APPLE__ */
+        case WXK_CONTROL_C:
+#endif /* __APPLE__ */
+            wxPostEvent((wxEvtHandler*)wxGetApp().plater()->canvas3D()->get_wxglcanvas(), SimpleEvent(EVT_GLTOOLBAR_COPY));
+            break;
+#ifdef __APPLE__
+        case 'v':
+        case 'V':
+#else /* __APPLE__ */
+        case WXK_CONTROL_V:
+#endif /* __APPLE__ */
+            wxPostEvent((wxEvtHandler*)wxGetApp().plater()->canvas3D()->get_wxglcanvas(), SimpleEvent(EVT_GLTOOLBAR_PASTE));
+            break;
+        }
+    }
     else
         event.Skip();
+
+//    if (event.GetKeyCode() == WXK_TAB)
+//        Navigate(event.ShiftDown() ? wxNavigationKeyEvent::IsBackward : wxNavigationKeyEvent::IsForward);
+//    else if (event.GetKeyCode() == WXK_DELETE
+//#ifdef __WXOSX__
+//        || event.GetKeyCode() == WXK_BACK
+//#endif //__WXOSX__
+//        ) {
+//        remove();
+//    }
+//    else if (wxGetKeyState(wxKeyCode('A')) && wxGetKeyState(WXK_CONTROL/*WXK_SHIFT*/))
+//        select_item_all_children();
+//    else if (wxGetKeyState(wxKeyCode('C')) && wxGetKeyState(WXK_CONTROL))
+//        wxPostEvent((wxEvtHandler*)wxGetApp().plater()->canvas3D()->get_wxglcanvas(), SimpleEvent(EVT_GLTOOLBAR_COPY));
+//    else if (wxGetKeyState(wxKeyCode('V')) && wxGetKeyState(WXK_CONTROL))
+//        wxPostEvent((wxEvtHandler*)wxGetApp().plater()->canvas3D()->get_wxglcanvas(), SimpleEvent(EVT_GLTOOLBAR_PASTE));
+//    else
+//        event.Skip();
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 }
 
 void ObjectList::OnBeginDrag(wxDataViewEvent &event)
