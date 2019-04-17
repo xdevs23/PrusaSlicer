@@ -292,7 +292,9 @@ public:
     void paste_objects_into_list(const std::vector<size_t>& object_idxs);
 
 private:
-    void OnChar(wxKeyEvent& event);
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//    void OnChar(wxKeyEvent& event);
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     void OnContextMenu(wxDataViewEvent &event);
 
     void OnBeginDrag(wxDataViewEvent &event);
@@ -312,6 +314,33 @@ private:
     void                            get_options_menu(settings_menu_hierarchy& settings_menu, const bool is_part);
 };
 
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//class ObjectListWrapperPanel : public wxPanel
+//{
+//    ObjectList* m_list;
+//
+//public:
+//    ObjectListWrapperPanel(wxWindow* parent)
+//        : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, /*wxTAB_TRAVERSAL |*/ wxWANTS_CHARS)
+//        , m_list(nullptr)
+//    {
+//        wxSizer* sizer = new wxBoxSizer(wxVERTICAL);
+//        m_list = new ObjectList(this);
+//        sizer->Add(m_list->get_sizer(), 1, wxEXPAND);
+//        SetSizer(sizer);
+//        GetSizer()->SetSizeHints(this);
+//
+//        Bind(wxEVT_CHAR, [this](wxKeyEvent& event) { 
+//            m_list->key_event(event); });
+//        Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) {
+//            m_list->key_event(event); });
+//        Bind(wxEVT_KEY_UP, [this](wxKeyEvent& event) {
+//            m_list->key_event(event); });
+//    }
+//
+//    ObjectList* get_list() { return m_list; }
+//};
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 }}
 
