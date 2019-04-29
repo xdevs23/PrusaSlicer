@@ -34,6 +34,7 @@
 
 #include "../Utils/PresetUpdater.hpp"
 #include "../Utils/PrintHost.hpp"
+#include "../Utils/MacDarkMode.hpp"
 #include "ConfigWizard.hpp"
 #include "slic3r/Config/Snapshot.hpp"
 #include "ConfigSnapshotDialog.hpp"
@@ -284,10 +285,24 @@ unsigned GUI_App::get_colour_approx_luma(const wxColour &colour)
         ));
 }
 
+bool GUI_App::dark_mode()
+{
+    const unsigned luma = get_colour_approx_luma(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+    return luma < 128;
+}
+
+bool GUI_App::dark_mode_menus()
+{
+#if __APPLE__
+    return mac_dark_mode();
+#else
+    return dark_mode();
+#endif
+}
+
 void GUI_App::init_label_colours()
 {
-    auto luma = get_colour_approx_luma(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
-    if (luma >= 128) {
+    if (dark_mode()) {
         m_color_label_modified = wxColour(252, 77, 1);
         m_color_label_sys = wxColour(26, 132, 57);
     }
@@ -323,6 +338,17 @@ void GUI_App::init_fonts()
     m_small_font.SetPointSize(11);
     m_bold_font.SetPointSize(13);
 #endif /*__WXMAC__*/
+}
+
+void GUI_App::update_fonts()
+{
+    /* Only normal and bold fonts are used for an application rescale,
+     * because of under MSW small and normal fonts are the same.
+     * To avoid same rescaling twice, just fill this values
+     * from rescaled MainFrame
+     */
+    m_normal_font   = mainframe->normal_font();
+    m_bold_font     = mainframe->normal_font().Bold();
 }
 
 void GUI_App::set_label_clr_modified(const wxColour& clr) {
@@ -652,7 +678,7 @@ void GUI_App::add_config_menu(wxMenuBar *menu)
     Bind(wxEVT_UPDATE_UI, [this](wxUpdateUIEvent& evt) { evt.Check(get_mode() == comAdvanced); }, config_id_base + ConfigMenuModeAdvanced);
     Bind(wxEVT_UPDATE_UI, [this](wxUpdateUIEvent& evt) { evt.Check(get_mode() == comExpert); }, config_id_base + ConfigMenuModeExpert);
 
-    local_menu->AppendSubMenu(mode_menu, _(L("Mode")), _(L("Slic3r View Mode")));
+    local_menu->AppendSubMenu(mode_menu, _(L("Mode")), wxString::Format(_(L("%s View Mode")), SLIC3R_APP_NAME));
     local_menu->AppendSeparator();
     local_menu->Append(config_id_base + ConfigMenuLanguage, _(L("Change Application &Language")));
     local_menu->AppendSeparator();
@@ -669,6 +695,12 @@ void GUI_App::add_config_menu(wxMenuBar *menu)
             // Take a configuration snapshot.
             if (check_unsaved_changes()) {
                 wxTextEntryDialog dlg(nullptr, _(L("Taking configuration snapshot")), _(L("Snapshot name")));
+                
+                // set current normal font for dialog children, 
+                // because of just dlg.SetFont(normal_font()) has no result;
+                for (auto child : dlg.GetChildren())
+                    child->SetFont(normal_font());
+
                 if (dlg.ShowModal() == wxID_OK)
                     app_config->set("on_snapshot",
                     Slic3r::GUI::Config::SnapshotDB::singleton().take_snapshot(
@@ -718,7 +750,6 @@ void GUI_App::add_config_menu(wxMenuBar *menu)
             get_installed_languages(names, identifiers);
             if (select_language(names, identifiers)) {
                 save_language();
-//                 show_info(mainframe->m_tabpanel, _(L("Application will be restarted")), _(L("Attention!")));
                 _3DScene::remove_all_canvases();// remove all canvas before recreate GUI
                 recreate_GUI();
             }

@@ -23,7 +23,7 @@ ObjectManipulation::ObjectManipulation(wxWindow* parent) :
 #endif // __APPLE__
 {
     m_og->set_name(_(L("Object Manipulation")));
-    m_og->label_width = 12 * wxGetApp().em_unit();//125;
+    m_og->label_width = 12;//125;
     m_og->set_grid_vgap(5);
     
     m_og->m_on_change = std::bind(&ObjectManipulation::on_change, this, std::placeholders::_1, std::placeholders::_2);
@@ -45,11 +45,11 @@ ObjectManipulation::ObjectManipulation(wxWindow* parent) :
     def.label = L("Name");
     def.gui_type = "legend";
     def.tooltip = L("Object name");
-    def.width = 21 * wxGetApp().em_unit();
+    def.width = 21;
     def.default_value = new ConfigOptionString{ " " };
     m_og->append_single_option_line(Option(def, "object_name"));
 
-    const int field_width = 5 * wxGetApp().em_unit()/*50*/;
+    const int field_width = 5;
 
     // Legend for object modification
     auto line = Line{ "", "" };
@@ -78,7 +78,7 @@ ObjectManipulation::ObjectManipulation(wxWindow* parent) :
         // Add "uniform scaling" button in front of "Scale" option 
         if (option_name == "Scale") {
             line.near_label_widget = [this](wxWindow* parent) {
-                auto btn = new PrusaLockButton(parent, wxID_ANY);
+                auto btn = new LockButton(parent, wxID_ANY);
                 btn->Bind(wxEVT_BUTTON, [btn, this](wxCommandEvent &event){
                     event.Skip();
                     wxTheApp->CallAfter([btn, this]() { set_uniform_scaling(btn->IsLocked()); });
@@ -117,15 +117,13 @@ ObjectManipulation::ObjectManipulation(wxWindow* parent) :
     m_og->append_line(add_og_to_object_settings(L("Scale"), "%"), &m_scale_Label);
     m_og->append_line(add_og_to_object_settings(L("Size"), "mm"));
 
-    /* Unused parameter at this time
-    def.label = L("Place on bed");
-    def.type = coBool;
-    def.tooltip = L("Automatic placing of models on printing bed in Y axis");
-    def.gui_type = "";
-    def.sidetext = "";
-    def.default_value = new ConfigOptionBool{ false };
-    m_og->append_single_option_line(Option(def, "place_on_bed"));
-    */
+    // call back for a rescale of button "Set uniform scale"
+    m_og->rescale_near_label_widget = [this](wxWindow* win) {
+        auto *ctrl = dynamic_cast<LockButton*>(win);
+        if (ctrl == nullptr)
+            return;
+        ctrl->msw_rescale();
+    };
 }
 
 void ObjectManipulation::Show(const bool show)
@@ -508,31 +506,15 @@ void ObjectManipulation::on_fill_empty_value(const std::string& opt_key)
     std::copy(opt_key.begin(), opt_key.end() - 2, std::back_inserter(param));
 
     double value = 0.0;
-
-    if (param == "position") {
-        int axis = opt_key.back() == 'x' ? 0 :
-            opt_key.back() == 'y' ? 1 : 2;
-
-        value = m_cache.position(axis);
-    }
-    else if (param == "rotation") {
-        int axis = opt_key.back() == 'x' ? 0 :
-            opt_key.back() == 'y' ? 1 : 2;
-
-        value = m_cache.rotation(axis);
-    }
-    else if (param == "scale") {
-        int axis = opt_key.back() == 'x' ? 0 :
-            opt_key.back() == 'y' ? 1 : 2;
-
-        value = m_cache.scale(axis);
-    }
-    else if (param == "size") {
-        int axis = opt_key.back() == 'x' ? 0 :
-            opt_key.back() == 'y' ? 1 : 2;
-
-        value = m_cache.size(axis);
-    }
+	auto opt_key_to_axis = [&opt_key]() { return opt_key.back() == 'x' ? 0 : opt_key.back() == 'y' ? 1 : 2; };
+    if (param == "position")
+        value = m_cache.position(opt_key_to_axis());
+    else if (param == "rotation")
+		value = m_cache.rotation(opt_key_to_axis());
+    else if (param == "scale")
+		value = m_cache.scale(opt_key_to_axis());
+    else if (param == "size")
+		value = m_cache.size(opt_key_to_axis());
 
     m_og->set_value(opt_key, double_to_string(value));
 }

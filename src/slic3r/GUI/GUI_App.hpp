@@ -94,10 +94,13 @@ public:
 
     GUI_App();
 
-    unsigned        get_colour_approx_luma(const wxColour &colour);
+    static unsigned get_colour_approx_luma(const wxColour &colour);
+    static bool     dark_mode();
+    static bool     dark_mode_menus();
     void            init_label_colours();
     void            update_label_colours_from_appconfig();
     void            init_fonts();
+    void            update_fonts();
     void            set_label_clr_modified(const wxColour& clr);
     void            set_label_clr_sys(const wxColour& clr);
 
@@ -138,6 +141,8 @@ public:
     bool            check_unsaved_changes();
     bool            checked_tab(Tab* tab);
     void            load_current_presets();
+
+    wxString        current_language_code() { return m_wxLocale != nullptr ? m_wxLocale->GetCanonicalName() : wxString("en_US"); }
 
     virtual bool OnExceptionInMainLoop();
 
