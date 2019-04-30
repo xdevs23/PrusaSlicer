@@ -436,7 +436,7 @@ void MainFrame::init_menubar()
         wxMenuItem* item_delete_sel = append_menu_item(editMenu, wxID_ANY, _(L("&Delete selected")) + sep + hotkey_delete, _(L("Deletes the current selection")),
             [this](wxCommandEvent&) { if (m_plater != nullptr) m_plater->remove_selected(); }, "remove_menu");
         wxMenuItem* item_delete_all = append_menu_item(editMenu, wxID_ANY, _(L("Delete &all")) + sep + GUI::shortkey_ctrl_prefix() + sep_space + hotkey_delete, _(L("Deletes all objects")),
-            [this](wxCommandEvent&) { if (m_plater != nullptr) m_plater->reset(); }, "delete_all_menu");
+            [this](wxCommandEvent&) { if (m_plater != nullptr) m_plater->reset_with_confirm(); }, "delete_all_menu");
 
         editMenu->AppendSeparator();
 
