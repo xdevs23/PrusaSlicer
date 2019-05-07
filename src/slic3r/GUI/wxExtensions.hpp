@@ -20,7 +20,13 @@ namespace Slic3r {
 	enum class ModelVolumeType : int;
 };
 
-wxMenuItem* append_menu_item(wxMenu* menu, int id, const wxString& string, const wxString& description, 
+#ifdef __WXMSW__
+void                msw_rescale_menu(wxMenu* menu);
+#else /* __WXMSW__ */
+inline void         msw_rescale_menu(wxMenu* /* menu */) {}
+#endif /* __WXMSW__ */
+
+wxMenuItem* append_menu_item(wxMenu* menu, int id, const wxString& string, const wxString& description,
     std::function<void(wxCommandEvent& event)> cb, const wxBitmap& icon, wxEvtHandler* event_handler = nullptr);
 wxMenuItem* append_menu_item(wxMenu* menu, int id, const wxString& string, const wxString& description,
     std::function<void(wxCommandEvent& event)> cb, const std::string& icon = "", wxEvtHandler* event_handler = nullptr);
