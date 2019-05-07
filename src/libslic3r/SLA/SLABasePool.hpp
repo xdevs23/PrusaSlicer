@@ -8,7 +8,9 @@
 namespace Slic3r {
 
 class ExPolygon;
+class Polygon;
 using ExPolygons = std::vector<ExPolygon>;
+using Polygons = std::vector<Polygon>;
 
 class TriangleMesh;
 
@@ -18,7 +20,7 @@ using ThrowOnCancel = std::function<void(void)>;
 
 /// Calculate the polygon representing the silhouette from the specified height
 void base_plate(const TriangleMesh& mesh,       // input mesh
-                ExPolygons& output,             // Output will be merged with
+                Polygons& output,             // Output will be merged with
                 float zlevel = 0.1f,            // Plate creation level
                 float layerheight = 0.05f,      // The sampling height
                 ThrowOnCancel thrfn = [](){});  // Will be called frequently
@@ -29,6 +31,7 @@ struct PoolConfig {
     double max_merge_distance_mm = 50;
     double edge_radius_mm = 1;
     double wall_slope = std::atan(1.0);          // Universal constant for Pi/4
+    bool   embed_object = false;
 
     ThrowOnCancel throw_on_cancel = [](){};
 
@@ -42,8 +45,9 @@ struct PoolConfig {
 };
 
 /// Calculate the pool for the mesh for SLA printing
-void create_base_pool(const ExPolygons& base_plate,
+void create_base_pool(const Polygons& base_plate,
                       TriangleMesh& output_mesh,
+                      const Polygons& holes,
                       const PoolConfig& = PoolConfig());
 
 /// TODO: Currently the base plate of the pool will have half the height of the

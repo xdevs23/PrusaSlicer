@@ -72,6 +72,7 @@ public:
     ~EigenMesh3D();
 
     inline double ground_level() const { return m_ground_level; }
+    inline double& ground_level() { return m_ground_level; }
 
     inline const Eigen::MatrixXd& V() const { return m_V; }
     inline const Eigen::MatrixXi& F() const { return m_F; }

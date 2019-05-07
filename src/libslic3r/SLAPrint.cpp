@@ -32,8 +32,8 @@ class SLAPrintObject::SupportData {
 public:
     sla::EigenMesh3D emesh;              // index-triangle representation
     std::vector<sla::SupportPoint> support_points;     // all the support points (manual/auto)
-    SupportTreePtr   support_tree_ptr;   // the supports
-    SlicedSupports   support_slices;     // sliced supports
+    SupportTreePtr                 support_tree_ptr;   // the supports
+    std::vector<ExPolygons>        support_slices;     // sliced supports
 
     inline SupportData(const TriangleMesh& trmesh): emesh(trmesh) {}
 };
@@ -590,11 +590,19 @@ sla::PoolConfig make_pool_config(const SLAPrintObjectConfig& c) {
     sla::PoolConfig pcfg;
 
     pcfg.min_wall_thickness_mm = c.pad_wall_thickness.getFloat();
-    pcfg.wall_slope = c.pad_wall_slope.getFloat();
-    pcfg.edge_radius_mm = c.pad_edge_radius.getFloat();
+    pcfg.wall_slope = c.pad_wall_slope.getFloat() * PI / 180.0;
+    
+    // We do not support radius for now
+    pcfg.edge_radius_mm = 0.0; //c.pad_edge_radius.getFloat();
+    
     pcfg.max_merge_distance_mm = c.pad_max_merge_distance.getFloat();
     pcfg.min_wall_height_mm = c.pad_wall_height.getFloat();
 
+    double elevation = c.support_object_elevation.getFloat();
+    
+    // set builtin pad implicitly ON
+    if(elevation <= EPSILON && c.pad_enable.getBool()) pcfg.embed_object = true;
+    
     return pcfg;
 }
 }
@@ -619,8 +627,10 @@ std::string SLAPrint::validate() const
                 cfg.head_width_mm +
                 2 * cfg.head_back_radius_mm -
                 cfg.head_penetration_mm;
+        
+        double elv = cfg.object_elevation_mm;
 
-        if(supports_en && pinhead_width > cfg.object_elevation_mm)
+        if(supports_en && elv > EPSILON && elv < pinhead_width )
             return L("Elevation is too low for object.");
     }
 
@@ -843,7 +853,12 @@ void SLAPrint::process()
 
         ctl.stopcondition = [this](){ return canceled(); };
         ctl.cancelfn = [this]() { throw_if_canceled(); };
-
+        
+        sla::PoolConfig pcfg = make_pool_config(po.m_config);
+        
+        if(pcfg.embed_object)
+            po.m_supportdata->emesh.ground_level() += pcfg.min_wall_thickness_mm;
+        
         po.m_supportdata->support_tree_ptr.reset(
                     new SLASupportTree(po.m_supportdata->support_points,
                                        po.m_supportdata->emesh, scfg, ctl));
@@ -881,26 +896,19 @@ void SLAPrint::process()
 
         if(po.m_config.pad_enable.getBool())
         {
-            double wt = po.m_config.pad_wall_thickness.getFloat();
-            double h =  po.m_config.pad_wall_height.getFloat();
-            double md = po.m_config.pad_max_merge_distance.getFloat();
-            // Radius is disabled for now...
-            double er = 0; // po.m_config.pad_edge_radius.getFloat();
-            double tilt = po.m_config.pad_wall_slope.getFloat()  * PI / 180.0;
+            sla::PoolConfig pcfg = make_pool_config(po.m_config);
+            
             double lh = po.m_config.layer_height.getFloat();
-            double elevation = po.m_config.support_object_elevation.getFloat();
-            if(!po.m_config.supports_enable.getBool()) elevation = 0;
-            sla::PoolConfig pcfg(wt, h, md, er, tilt);
-
-            ExPolygons bp;
+            
+            Polygons bp;
             double pad_h = sla::get_pad_fullheight(pcfg);
-            auto&& trmesh = po.transformed_mesh();
+            const TriangleMesh &trmesh = po.transformed_mesh();
 
             // This call can get pretty time consuming
             auto thrfn = [this](){ throw_if_canceled(); };
 
-            if(elevation < pad_h) {
-                // we have to count with the model geometry for the base plate
+            if(pcfg.embed_object) {
+                // we have will use the the base plate as the model's own pad
                 sla::base_plate(trmesh, bp, float(pad_h), float(lh), thrfn);
             }
 
@@ -1634,7 +1642,7 @@ double SLAPrintObject::get_elevation() const {
         // will be in the future, we provide the config to the get_pad_elevation
         // method and we will have the correct value
         sla::PoolConfig pcfg = make_pool_config(m_config);
-        ret += sla::get_pad_elevation(pcfg);
+        if(!pcfg.embed_object) ret += sla::get_pad_elevation(pcfg);
     }
 
     return ret;
@@ -1648,8 +1656,9 @@ double SLAPrintObject::get_current_elevation() const
 
     if(!has_supports && !has_pad)
         return 0;
-    else if(has_supports && !has_pad)
+    else if(has_supports && !has_pad) {
         return se ? m_config.support_object_elevation.getFloat() : 0;
+    }
 
     return get_elevation();
 }

@@ -24,10 +24,11 @@ class TriangleMesh;
 class Model;
 class ModelInstance;
 class ModelObject;
+class Polygon;
 class ExPolygon;
 
-using SliceLayer = std::vector<ExPolygon>;
-using SlicedSupports = std::vector<SliceLayer>;
+using Polygons = std::vector<Polygon>;
+using ExPolygons = std::vector<ExPolygon>;
 
 namespace sla {
 
@@ -179,12 +180,16 @@ public:
     void merged_mesh_with_pad(TriangleMesh&) const;
 
     /// Get the sliced 2d layers of the support geometry.
-    SlicedSupports slice(float layerh, float init_layerh = -1.0) const;
+    std::vector<ExPolygons> slice(float layerh, float init_layerh = -1.0) const;
 
-    SlicedSupports slice(const std::vector<float>&, float closing_radius) const;
+    std::vector<ExPolygons> slice(const std::vector<float>&, float closing_radius) const;
 
     /// Adding the "pad" (base pool) under the supports
-    const TriangleMesh& add_pad(const SliceLayer& baseplate,
+    /// modelbase will be used according to the embed_object flag in PoolConfig.
+    /// If set, the plate will interpreted as the model's intrinsic pad. 
+    /// Otherwise, the modelbase will be unified with the base plate calculated
+    /// from the supports.
+    const TriangleMesh& add_pad(const Polygons& modelbase,
                                 const PoolConfig& pcfg) const;
 
     /// Get the pad geometry

@@ -556,28 +556,33 @@ struct Pad {
     PoolConfig cfg;
     double zlevel = 0;
 
-    Pad() {}
+    Pad() = default;
 
     Pad(const TriangleMesh& object_support_mesh,
-        const ExPolygons& baseplate,
+        const Polygons& modelbase,
         double ground_level,
         const PoolConfig& pcfg) :
         cfg(pcfg),
-        zlevel(ground_level +
-               (sla::get_pad_fullheight(pcfg) - sla::get_pad_elevation(pcfg)) )
+        zlevel(ground_level + sla::get_pad_fullheight(pcfg))
     {
-        ExPolygons basep;
+        Polygons basep;
         cfg.throw_on_cancel();
-
+        
         // The 0.1f is the layer height with which the mesh is sampled and then
         // the layers are unified into one vector of polygons.
         base_plate(object_support_mesh, basep,
                    float(cfg.min_wall_height_mm + cfg.min_wall_thickness_mm),
                    0.1f, pcfg.throw_on_cancel);
+        
+        if(pcfg.embed_object) {
+            create_base_pool(basep, tmesh, modelbase, cfg);
+            zlevel -= sla::get_pad_elevation(pcfg);
+        } else {
+            zlevel -= sla::get_pad_elevation(pcfg);
+            for(auto& bp : modelbase) basep.emplace_back(bp);
+            create_base_pool(basep, tmesh, {}, cfg);
+        }
 
-        for(auto& bp : baseplate) basep.emplace_back(bp);
-
-        create_base_pool(basep, tmesh, cfg);
         tmesh.translate(0, 0, float(zlevel));
     }
 
@@ -763,9 +768,9 @@ public:
     }
 
     const Pad& create_pad(const TriangleMesh& object_supports,
-                          const ExPolygons& baseplate,
+                          const Polygons& modelbase,
                           const PoolConfig& cfg) {
-        m_pad = Pad(object_supports, baseplate, ground_level, cfg);
+        m_pad = Pad(object_supports, modelbase, ground_level, cfg);
         return m_pad;
     }
 
@@ -2226,7 +2231,7 @@ void SLASupportTree::merged_mesh_with_pad(TriangleMesh &outmesh) const {
     outmesh.merge(get_pad());
 }
 
-SlicedSupports SLASupportTree::slice(float layerh, float init_layerh) const
+std::vector<ExPolygons> SLASupportTree::slice(float layerh, float init_layerh) const
 {
     if(init_layerh < 0) init_layerh = layerh;
     auto& stree = get();
@@ -2247,34 +2252,29 @@ SlicedSupports SLASupportTree::slice(float layerh, float init_layerh) const
     fullmesh.merge(get_pad());
     fullmesh.require_shared_vertices(); // TriangleMeshSlicer needs this
     TriangleMeshSlicer slicer(&fullmesh);
-    SlicedSupports ret;
+    std::vector<ExPolygons> ret;
     slicer.slice(heights, 0.f, &ret, get().ctl().cancelfn);
 
     return ret;
 }
 
-SlicedSupports SLASupportTree::slice(const std::vector<float> &heights,
+std::vector<ExPolygons> SLASupportTree::slice(const std::vector<float> &heights,
                                      float cr) const
 {
     TriangleMesh fullmesh = m_impl->merged_mesh();
     fullmesh.merge(get_pad());
     fullmesh.require_shared_vertices(); // TriangleMeshSlicer needs this
     TriangleMeshSlicer slicer(&fullmesh);
-    SlicedSupports ret;
+    std::vector<ExPolygons> ret;
     slicer.slice(heights, cr, &ret, get().ctl().cancelfn);
 
     return ret;
 }
 
-const TriangleMesh &SLASupportTree::add_pad(const SliceLayer& baseplate,
+const TriangleMesh &SLASupportTree::add_pad(const Polygons& modelbase,
                                             const PoolConfig& pcfg) const
 {
-//    PoolConfig pcfg;
-//    pcfg.min_wall_thickness_mm = min_wall_thickness_mm;
-//    pcfg.min_wall_height_mm    = min_wall_height_mm;
-//    pcfg.max_merge_distance_mm = max_merge_distance_mm;
-//    pcfg.edge_radius_mm        = edge_radius_mm;
-    return m_impl->create_pad(merged_mesh(), baseplate, pcfg).tmesh;
+    return m_impl->create_pad(merged_mesh(), modelbase, pcfg).tmesh;
 }
 
 const TriangleMesh &SLASupportTree::get_pad() const
