@@ -1784,7 +1784,7 @@ void GLCanvas3D::mirror_selection(Axis axis)
 {
     m_selection.mirror(axis);
     do_mirror();
-    wxGetApp().obj_manipul()->update_settings_value(m_selection);
+    wxGetApp().obj_manipul()->set_dirty();
 }
 
 // Reload the 3D scene of 
@@ -1829,6 +1829,7 @@ void GLCanvas3D::reload_scene(bool refresh_immediately, bool force_full_scene_re
     // State of the sla_steps for all SLAPrintObjects.
     std::vector<SLASupportState>   sla_support_state;
 
+    std::vector<size_t> instance_ids_selected;
     std::vector<size_t> map_glvolume_old_to_new(m_volumes.volumes.size(), size_t(-1));
     std::vector<GLVolume*> glvolumes_new;
     glvolumes_new.reserve(m_volumes.volumes.size());
@@ -1893,6 +1894,10 @@ void GLCanvas3D::reload_scene(bool refresh_immediately, bool force_full_scene_re
                 if (it != model_volume_state.end() && it->geometry_id == key.geometry_id)
 					mvs = &(*it);
             }
+            // Emplace instance ID of the volume. Both the aux volumes and model volumes share the same instance ID.
+            // The wipe tower has its own wipe_tower_instance_id().
+            if (m_selection.contains_volume(volume_id))
+                instance_ids_selected.emplace_back(volume->geometry_id.second);
             if (mvs == nullptr || force_full_scene_refresh) {
                 // This GLVolume will be released.
                 if (volume->is_wipe_tower) {
@@ -1924,13 +1929,18 @@ void GLCanvas3D::reload_scene(bool refresh_immediately, bool force_full_scene_re
                 }
             }
         }
+        sort_remove_duplicates(instance_ids_selected);
     }
 
     if (m_reload_delayed)
         return;
 
+	bool update_object_list = false;
+
     if (m_regenerate_volumes)
     {
+		if (m_volumes.volumes != glvolumes_new)
+			update_object_list = true;
         m_volumes.volumes = std::move(glvolumes_new);
         for (unsigned int obj_idx = 0; obj_idx < (unsigned int)m_model->objects.size(); ++ obj_idx) {
             const ModelObject &model_object = *m_model->objects[obj_idx];
@@ -1945,12 +1955,16 @@ void GLCanvas3D::reload_scene(bool refresh_immediately, bool force_full_scene_re
                         // New volume.
                         m_volumes.load_object_volume(&model_object, obj_idx, volume_idx, instance_idx, m_color_by, m_use_VBOs && m_initialized);
 						m_volumes.volumes.back()->geometry_id = key.geometry_id;
+						update_object_list = true;
                     } else {
 						// Recycling an old GLVolume.
 						GLVolume &existing_volume = *m_volumes.volumes[it->volume_idx];
                         assert(existing_volume.geometry_id == key.geometry_id);
 						// Update the Object/Volume/Instance indices into the current Model.
-                        existing_volume.composite_id = it->composite_id;
+						if (existing_volume.composite_id != it->composite_id) {
+							existing_volume.composite_id = it->composite_id;
+							update_object_list = true;
+						}
                     }
                 }
             }
@@ -2052,13 +2066,17 @@ void GLCanvas3D::reload_scene(bool refresh_immediately, bool force_full_scene_re
 
         update_volumes_colors_by_extruder();
 		// Update selection indices based on the old/new GLVolumeCollection.
-		m_selection.volumes_changed(map_glvolume_old_to_new);
+        if (m_selection.get_mode() == Selection::Instance)
+            m_selection.instances_changed(instance_ids_selected);
+        else
+            m_selection.volumes_changed(map_glvolume_old_to_new);
 	}
 
     m_gizmos.update_data(*this);
 
     // Update the toolbar
-    post_event(SimpleEvent(EVT_GLCANVAS_OBJECT_SELECT));
+	if (update_object_list)
+		post_event(SimpleEvent(EVT_GLCANVAS_OBJECT_SELECT));
 
     // checks for geometry outside the print volume to render it accordingly
     if (!m_volumes.empty())
@@ -2109,7 +2127,7 @@ void GLCanvas3D::reload_scene(bool refresh_immediately, bool force_full_scene_re
         // to force a reset of its cache
         auto manip = wxGetApp().obj_manipul();
         if (manip != nullptr)
-            manip->update_settings_value(m_selection);
+            manip->set_dirty();
     }
 
     // and force this canvas to be redrawn.
@@ -2799,7 +2817,7 @@ void GLCanvas3D::on_mouse(wxMouseEvent& evt)
 
             m_regenerate_volumes = false;
             m_selection.translate(cur_pos - m_mouse.drag.start_position_3D);
-            wxGetApp().obj_manipul()->update_settings_value(m_selection);
+            wxGetApp().obj_manipul()->set_dirty();
             m_dirty = true;
         }
     }
@@ -2859,7 +2877,7 @@ void GLCanvas3D::on_mouse(wxMouseEvent& evt)
         {
             m_regenerate_volumes = false;
             do_move();
-            wxGetApp().obj_manipul()->update_settings_value(m_selection);
+            wxGetApp().obj_manipul()->set_dirty();
             // Let the platter know that the dragging finished, so a delayed refresh
             // of the scene with the background processing data should be performed.
             post_event(SimpleEvent(EVT_GLCANVAS_MOUSE_DRAGGING_FINISHED));
@@ -2878,7 +2896,7 @@ void GLCanvas3D::on_mouse(wxMouseEvent& evt)
             {
                 m_selection.clear();
                 m_selection.set_mode(Selection::Instance);
-                wxGetApp().obj_manipul()->update_settings_value(m_selection);
+                wxGetApp().obj_manipul()->set_dirty();
                 m_gizmos.reset_all_states();
                 m_gizmos.update_data(*this);
                 post_event(SimpleEvent(EVT_GLCANVAS_OBJECT_SELECT));
@@ -2905,7 +2923,7 @@ void GLCanvas3D::on_mouse(wxMouseEvent& evt)
                     m_gizmos.refresh_on_off_state(m_selection);
                     post_event(SimpleEvent(EVT_GLCANVAS_OBJECT_SELECT));
                     m_gizmos.update_data(*this);
-                    wxGetApp().obj_manipul()->update_settings_value(m_selection);
+                    wxGetApp().obj_manipul()->set_dirty();
                     // forces a frame render to update the view before the context menu is shown
                     render();
 
