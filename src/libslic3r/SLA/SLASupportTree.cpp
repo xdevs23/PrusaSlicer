@@ -563,7 +563,9 @@ struct Pad {
         double ground_level,
         const PoolConfig& pcfg) :
         cfg(pcfg),
-        zlevel(ground_level + sla::get_pad_fullheight(pcfg))
+        zlevel(ground_level + 
+               sla::get_pad_fullheight(pcfg) -
+               sla::get_pad_elevation(pcfg))
     {
         Polygons basep;
         cfg.throw_on_cancel();
@@ -574,12 +576,11 @@ struct Pad {
                    float(cfg.min_wall_height_mm + cfg.min_wall_thickness_mm),
                    0.1f, pcfg.throw_on_cancel);
         
+        for(auto& bp : modelbase) basep.emplace_back(bp);
+        
         if(pcfg.embed_object) {
             create_base_pool(basep, tmesh, modelbase, cfg);
-            zlevel -= sla::get_pad_elevation(pcfg);
         } else {
-            zlevel -= sla::get_pad_elevation(pcfg);
-            for(auto& bp : modelbase) basep.emplace_back(bp);
             create_base_pool(basep, tmesh, {}, cfg);
         }
 
