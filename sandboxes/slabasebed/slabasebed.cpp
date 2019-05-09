@@ -15,7 +15,8 @@ const std::string USAGE_STR = {
 
 namespace Slic3r { namespace sla {
 
-Contour3D create_base_pool(const ExPolygons &ground_layer, 
+Contour3D create_base_pool(const Polygons &ground_layer, 
+                           const Polygons &holes = {},
                            const PoolConfig& cfg = PoolConfig());
 
 Contour3D walls(const Polygon& floor_plate, const Polygon& ceiling,
@@ -42,7 +43,7 @@ int main(const int argc, const char *argv[]) {
     model.ReadSTLFile(argv[1]);
     model.align_to_origin();
 
-    ExPolygons ground_slice;
+    Polygons ground_slice;
     sla::Contour3D mesh;
 //    TriangleMesh basepool;
 
@@ -61,7 +62,7 @@ int main(const int argc, const char *argv[]) {
     sla::PoolConfig cfg;
     cfg.min_wall_height_mm = 0;
     cfg.edge_radius_mm = 0.2;
-    mesh = sla::create_base_pool(ground_slice, cfg);
+    mesh = sla::create_base_pool(ground_slice, {}, cfg);
     
 //    mesh.merge(triangulate_expolygon_3d(top_plate, 3.0, false));
 //    mesh.merge(triangulate_expolygon_3d(bottom_plate, 0.0, true));

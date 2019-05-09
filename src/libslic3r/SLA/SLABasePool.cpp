@@ -7,9 +7,9 @@
 #include "Tesselate.hpp"
 
 // For debugging:
-//#include <fstream>
+#include <fstream>
 //#include <libnest2d/tools/benchmark.h>
-//#include "SVG.hpp"
+#include "SVG.hpp"
 
 #include <libnest2d/backends/clipper/geometries.hpp>
 #include <libnest2d/placers/nfpplacer.hpp>
@@ -441,9 +441,9 @@ void offset_with_breakstick_holes(ExPolygon& expoly,
     ClipperLib::Paths sol;
     clipper.Execute(clpr::ctDifference, sol);
 
-//    SVG svg("bridgestick_plate.svg");
-//    svg.draw(sol, 1);
-//    svg.Close();
+    SVG svg("bridgestick_plate.svg");
+    svg.draw(sol, 1);
+    svg.Close();
     if(!sol.empty()) expoly.contour = ClipperPath_to_Slic3rPolygon(sol.front());
 }
 
