@@ -1050,8 +1050,8 @@ void PrintConfigDef::init_fff_params()
     def->set_default_value(new ConfigOptionBool(false));
 
 	def = this->add("silent_mode", coBool);
-	def->label = L("Supports silent mode");
-	def->tooltip = L("Set silent mode for the G-code flavor");
+	def->label = L("Supports stealth mode");
+	def->tooltip = L("The firmware supports stealth mode");
     def->mode = comExpert;
 	def->set_default_value(new ConfigOptionBool(true));
 
@@ -1075,16 +1075,16 @@ void PrintConfigDef::init_fff_params()
 			// Add the machine feedrate limits for XYZE axes. (M203)
 			def = this->add("machine_max_feedrate_" + axis.name, coFloats);
 			def->full_label = (boost::format("Maximum feedrate %1%") % axis_upper).str();
-			L("Maximum feedrate x");
-			L("Maximum feedrate y");
-			L("Maximum feedrate z");
-			L("Maximum feedrate e");
+			L("Maximum feedrate X");
+			L("Maximum feedrate Y");
+			L("Maximum feedrate Z");
+			L("Maximum feedrate E");
 			def->category = L("Machine limits");
 			def->tooltip  = (boost::format("Maximum feedrate of the %1% axis") % axis_upper).str();
-			L("Maximum feedrate of the x axis");
-			L("Maximum feedrate of the y axis");
-			L("Maximum feedrate of the z axis");
-			L("Maximum feedrate of the e axis");
+			L("Maximum feedrate of the X axis");
+			L("Maximum feedrate of the Y axis");
+			L("Maximum feedrate of the Z axis");
+			L("Maximum feedrate of the E axis");
 			def->sidetext = L("mm/s");
 			def->min = 0;
 			def->width = machine_limits_opt_width;
@@ -1093,12 +1093,16 @@ void PrintConfigDef::init_fff_params()
 			// Add the machine acceleration limits for XYZE axes (M201)
 			def = this->add("machine_max_acceleration_" + axis.name, coFloats);
 			def->full_label = (boost::format("Maximum acceleration %1%") % axis_upper).str();
-			L("Maximum acceleration x");
-			L("Maximum acceleration y");
-			L("Maximum acceleration z");
-			L("Maximum acceleration e");
+			L("Maximum acceleration X");
+			L("Maximum acceleration Y");
+			L("Maximum acceleration Z");
+			L("Maximum acceleration E");
 			def->category = L("Machine limits");
 			def->tooltip  = (boost::format("Maximum acceleration of the %1% axis") % axis_upper).str();
+			L("Maximum acceleration of the X axis");
+			L("Maximum acceleration of the Y axis");
+			L("Maximum acceleration of the Z axis");
+			L("Maximum acceleration of the E axis");
 			def->sidetext = L("mm/s²");
 			def->min = 0;
 			def->width = machine_limits_opt_width;
@@ -1107,16 +1111,16 @@ void PrintConfigDef::init_fff_params()
 			// Add the machine jerk limits for XYZE axes (M205)
 			def = this->add("machine_max_jerk_" + axis.name, coFloats);
 			def->full_label = (boost::format("Maximum jerk %1%") % axis_upper).str();
-			L("Maximum jerk x");
-			L("Maximum jerk y");
-			L("Maximum jerk z");
-			L("Maximum jerk e");
+			L("Maximum jerk X");
+			L("Maximum jerk Y");
+			L("Maximum jerk Z");
+			L("Maximum jerk E");
 			def->category = L("Machine limits");
 			def->tooltip  = (boost::format("Maximum jerk of the %1% axis") % axis_upper).str();
-			L("Maximum jerk of the x axis");
-			L("Maximum jerk of the y axis");
-			L("Maximum jerk of the z axis");
-			L("Maximum jerk of the e axis");
+			L("Maximum jerk of the X axis");
+			L("Maximum jerk of the Y axis");
+			L("Maximum jerk of the Z axis");
+			L("Maximum jerk of the E axis");
 			def->sidetext = L("mm/s");
 			def->min = 0;
 			def->width = machine_limits_opt_width;
@@ -2426,7 +2430,7 @@ void PrintConfigDef::init_sla_params()
 
     def = this->add("support_pillar_connection_mode", coEnum);
     def->label = L("Support pillar connection mode");
-    def->tooltip = L("Controls the bridge type between two neigboring pillars."
+    def->tooltip = L("Controls the bridge type between two neighboring pillars."
                      " Can be zig-zag, cross (double zig-zag) or dynamic which"
                      " will automatically switch between the first two depending"
                      " on the distance of the two pillars.");
@@ -2554,7 +2558,7 @@ void PrintConfigDef::init_sla_params()
     def->tooltip = L("Defines the pad cavity depth. Set to zero to disable the cavity. "
                      "Be careful when enabling this feature, as some resins may "
                      "produce an extreme suction effect inside the cavity, "
-                     "which makes pealing the print off the vat foil difficult.");
+                     "which makes peeling the print off the vat foil difficult.");
     def->category = L("Pad");
 //     def->tooltip = L("");
     def->sidetext = L("mm");
@@ -2590,7 +2594,7 @@ void PrintConfigDef::init_sla_params()
     def->category = L("Pad");
     def->tooltip = L("The slope of the pad wall relative to the bed plane. "
                      "90 degrees means straight walls.");
-    def->sidetext = L("degrees");
+    def->sidetext = L("°");
     def->min = 45;
     def->max = 90;
     def->mode = comAdvanced;

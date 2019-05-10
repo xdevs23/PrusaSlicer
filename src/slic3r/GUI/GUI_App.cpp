@@ -749,10 +749,10 @@ void GUI_App::add_config_menu(wxMenuBar *menu)
              * and draw user's attention to the application restarting after a language change
              */
             wxMessageDialog dialog(nullptr,
-                _(L("Application will be restarted after language change.")) + "\n" +
-                _(L("3D-Scene will be cleaned.")) + "\n\n" +
-                _(L("Please, check your changes before.")),
-                _(L("Attention!")),
+                _(L("Switching the language will trigger application restart.\n"
+                    "You will lose content of the plater.")) + "\n\n" +
+                _(L("Do you want to proceed?")),
+                wxString(SLIC3R_APP_NAME) + " - " + _(L("Language selection")),
                 wxICON_QUESTION | wxOK | wxCANCEL);
             if ( dialog.ShowModal() == wxID_CANCEL)
                 return;
@@ -798,8 +798,8 @@ bool GUI_App::check_unsaved_changes()
         return true;
     // Ask the user.
     wxMessageDialog dialog(mainframe,
-        _(L("You have unsaved changes ")) + dirty + _(L(". Discard changes and continue anyway?")),
-        _(L("Unsaved Presets")),
+        _(L("The following presets were modified: ")) + dirty + "\n" + _(L("Discard changes and continue anyway?")),
+        wxString(SLIC3R_APP_NAME) + " - " + _(L("Unsaved Presets")),
         wxICON_QUESTION | wxYES_NO | wxNO_DEFAULT);
     return dialog.ShowModal() == wxID_YES;
 }
@@ -819,7 +819,7 @@ void GUI_App::load_current_presets()
 	this->plater()->set_printer_technology(printer_technology);
     for (Tab *tab : tabs_list)
 		if (tab->supports_printer_technology(printer_technology)) {
-			if (tab->name() == "printer")
+			if (tab->type() == Preset::TYPE_PRINTER)
 				static_cast<TabPrinter*>(tab)->update_pages();
 			tab->load_current_preset();
 		}

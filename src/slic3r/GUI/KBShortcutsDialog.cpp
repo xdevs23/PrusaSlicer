@@ -112,7 +112,7 @@ void KBShortcutsDialog::fill_shortcuts()
 //    main_shortcuts.push_back(Shortcut(ctrl+"U"          ,L("Quick slice")));
 //    main_shortcuts.push_back(Shortcut(ctrl+"Shift+U"    ,L("Repeat last quick slice")));
     main_shortcuts.push_back(Shortcut(ctrl+"1"          ,L("Select Plater Tab")));
-    main_shortcuts.push_back(Shortcut(ctrl+alt+"U"      ,L("Quick slice and Save as")));
+//    main_shortcuts.push_back(Shortcut(ctrl+alt+"U"      ,L("Quick slice and Save as")));
     main_shortcuts.push_back(Shortcut(ctrl+"2"          ,L("Select Print Settings Tab")));
     main_shortcuts.push_back(Shortcut(ctrl+"3"          ,L("Select Filament Settings Tab")));
     main_shortcuts.push_back(Shortcut(ctrl+"4"          ,L("Select Printer Settings Tab")));
@@ -120,9 +120,9 @@ void KBShortcutsDialog::fill_shortcuts()
     main_shortcuts.push_back(Shortcut(ctrl+"6"          ,L("Switch to Preview")));
     main_shortcuts.push_back(Shortcut(ctrl+"P"          ,L("Preferences")));
     main_shortcuts.push_back(Shortcut(ctrl+"J"          ,L("Print host upload queue")));
-    main_shortcuts.push_back(Shortcut("0-6"             ,L("Camera view ")));
-    main_shortcuts.push_back(Shortcut("+"               ,L("Add Instance to selected object ")));
-    main_shortcuts.push_back(Shortcut("-"               ,L("Remove Instance from selected object")));
+    main_shortcuts.push_back(Shortcut("0-6"             ,L("Camera view")));
+    main_shortcuts.push_back(Shortcut("+"               ,L("Add Instance of the selected object")));
+    main_shortcuts.push_back(Shortcut("-"               ,L("Remove Instance of the selected object")));
     main_shortcuts.push_back(Shortcut("?"               ,L("Show keyboard shortcuts list")));
     main_shortcuts.push_back(Shortcut(ctrl/*+"LeftMouse"*/,L("Press to select multiple object or move multiple object with mouse")));
 

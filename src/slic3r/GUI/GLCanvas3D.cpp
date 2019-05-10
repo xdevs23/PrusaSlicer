@@ -796,7 +796,7 @@ bool GLCanvas3D::WarningTexture::_generate(const std::string& msg_utf8, const GL
     if (msg_utf8.empty())
         return false;
 
-    wxString msg = _(msg_utf8);//GUI::from_u8(msg_utf8);
+    wxString msg = _(msg_utf8);
 
     wxMemoryDC memDC;
 
@@ -3038,10 +3038,10 @@ void GLCanvas3D::set_tooltip(const std::string& tooltip) const
             if (tooltip.empty())
                 m_canvas->UnsetToolTip();
             else
-                t->SetTip(tooltip);
+                t->SetTip(wxString::FromUTF8(tooltip.data()));
         }
         else if (!tooltip.empty()) // Avoid "empty" tooltips => unset of the empty tooltip leads to application crash under OSX
-            m_canvas->SetToolTip(tooltip);
+            m_canvas->SetToolTip(wxString::FromUTF8(tooltip.data()));
     }
 }
 
@@ -3392,7 +3392,7 @@ bool GLCanvas3D::_init_toolbar()
 #if ENABLE_SVG_ICONS
     item.icon_filename = "add.svg";
 #endif // ENABLE_SVG_ICONS
-    item.tooltip = GUI::L_str("Add...") + " [" + GUI::shortkey_ctrl_prefix() + "I]";
+    item.tooltip = _utf8(L("Add...")) + " [" + GUI::shortkey_ctrl_prefix() + "I]";
     item.sprite_id = 0;
     item.action_callback = [this]() { if (m_canvas != nullptr) wxPostEvent(m_canvas, SimpleEvent(EVT_GLTOOLBAR_ADD)); };
     if (!m_toolbar.add_item(item))
@@ -3402,7 +3402,7 @@ bool GLCanvas3D::_init_toolbar()
 #if ENABLE_SVG_ICONS
     item.icon_filename = "remove.svg";
 #endif // ENABLE_SVG_ICONS
-    item.tooltip = GUI::L_str("Delete") + " [Del]";
+    item.tooltip = _utf8(L("Delete")) + " [Del]";
     item.sprite_id = 1;
     item.action_callback = [this]() { if (m_canvas != nullptr) wxPostEvent(m_canvas, SimpleEvent(EVT_GLTOOLBAR_DELETE)); };
     item.enabled_state_callback = []()->bool { return wxGetApp().plater()->can_delete(); };
@@ -3413,7 +3413,7 @@ bool GLCanvas3D::_init_toolbar()
 #if ENABLE_SVG_ICONS
     item.icon_filename = "delete_all.svg";
 #endif // ENABLE_SVG_ICONS
-    item.tooltip = GUI::L_str("Delete all") + " [" + GUI::shortkey_ctrl_prefix() + "Del]";
+    item.tooltip = _utf8(L("Delete all")) + " [" + GUI::shortkey_ctrl_prefix() + "Del]";
     item.sprite_id = 2;
     item.action_callback = [this]() { if (m_canvas != nullptr) wxPostEvent(m_canvas, SimpleEvent(EVT_GLTOOLBAR_DELETE_ALL)); };
     item.enabled_state_callback = []()->bool { return wxGetApp().plater()->can_delete_all(); };
@@ -3424,7 +3424,7 @@ bool GLCanvas3D::_init_toolbar()
 #if ENABLE_SVG_ICONS
     item.icon_filename = "arrange.svg";
 #endif // ENABLE_SVG_ICONS
-    item.tooltip = GUI::L_str("Arrange [A]");
+    item.tooltip = _utf8(L("Arrange")) + " [A]";
     item.sprite_id = 3;
     item.action_callback = [this]() { if (m_canvas != nullptr) wxPostEvent(m_canvas, SimpleEvent(EVT_GLTOOLBAR_ARRANGE)); };
     item.enabled_state_callback = []()->bool { return wxGetApp().plater()->can_arrange(); };
@@ -3438,7 +3438,7 @@ bool GLCanvas3D::_init_toolbar()
 #if ENABLE_SVG_ICONS
     item.icon_filename = "copy.svg";
 #endif // ENABLE_SVG_ICONS
-    item.tooltip = GUI::L_str("Copy") + " [" + GUI::shortkey_ctrl_prefix() + "C]";
+    item.tooltip = _utf8(L("Copy")) + " [" + GUI::shortkey_ctrl_prefix() + "C]";
     item.sprite_id = 4;
     item.action_callback = [this]() { if (m_canvas != nullptr) wxPostEvent(m_canvas, SimpleEvent(EVT_GLTOOLBAR_COPY)); };
     item.enabled_state_callback = []()->bool { return wxGetApp().plater()->can_copy(); };
@@ -3449,7 +3449,7 @@ bool GLCanvas3D::_init_toolbar()
 #if ENABLE_SVG_ICONS
     item.icon_filename = "paste.svg";
 #endif // ENABLE_SVG_ICONS
-    item.tooltip = GUI::L_str("Paste") + " [" + GUI::shortkey_ctrl_prefix() + "V]";
+    item.tooltip = _utf8(L("Paste")) + " [" + GUI::shortkey_ctrl_prefix() + "V]";
     item.sprite_id = 5;
     item.action_callback = [this]() { if (m_canvas != nullptr) wxPostEvent(m_canvas, SimpleEvent(EVT_GLTOOLBAR_PASTE)); };
     item.enabled_state_callback = []()->bool { return wxGetApp().plater()->can_paste(); };
@@ -3463,7 +3463,7 @@ bool GLCanvas3D::_init_toolbar()
 #if ENABLE_SVG_ICONS
     item.icon_filename = "instance_add.svg";
 #endif // ENABLE_SVG_ICONS
-    item.tooltip = GUI::L_str("Add instance [+]");
+    item.tooltip = _utf8(L("Add instance")) + " [+]";
     item.sprite_id = 6;
     item.action_callback = [this]() { if (m_canvas != nullptr) wxPostEvent(m_canvas, SimpleEvent(EVT_GLTOOLBAR_MORE)); };
     item.visibility_callback = []()->bool { return wxGetApp().get_mode() != comSimple; };
@@ -3475,7 +3475,7 @@ bool GLCanvas3D::_init_toolbar()
 #if ENABLE_SVG_ICONS
     item.icon_filename = "instance_remove.svg";
 #endif // ENABLE_SVG_ICONS
-    item.tooltip = GUI::L_str("Remove instance [-]");
+    item.tooltip = _utf8(L("Remove instance")) + " [-]";
     item.sprite_id = 7;
     item.action_callback = [this]() { if (m_canvas != nullptr) wxPostEvent(m_canvas, SimpleEvent(EVT_GLTOOLBAR_FEWER)); };
     item.visibility_callback = []()->bool { return wxGetApp().get_mode() != comSimple; };
@@ -3490,7 +3490,7 @@ bool GLCanvas3D::_init_toolbar()
 #if ENABLE_SVG_ICONS
     item.icon_filename = "split_objects.svg";
 #endif // ENABLE_SVG_ICONS
-    item.tooltip = GUI::L_str("Split to objects");
+    item.tooltip = _utf8(L("Split to objects"));
     item.sprite_id = 8;
     item.action_callback = [this]() { if (m_canvas != nullptr) wxPostEvent(m_canvas, SimpleEvent(EVT_GLTOOLBAR_SPLIT_OBJECTS)); };
     item.visibility_callback = GLToolbarItem::Default_Visibility_Callback;
@@ -3502,7 +3502,7 @@ bool GLCanvas3D::_init_toolbar()
 #if ENABLE_SVG_ICONS
     item.icon_filename = "split_parts.svg";
 #endif // ENABLE_SVG_ICONS
-    item.tooltip = GUI::L_str("Split to parts");
+    item.tooltip = _utf8(L("Split to parts"));
     item.sprite_id = 9;
     item.action_callback = [this]() { if (m_canvas != nullptr) wxPostEvent(m_canvas, SimpleEvent(EVT_GLTOOLBAR_SPLIT_VOLUMES)); };
     item.visibility_callback = []()->bool { return wxGetApp().get_mode() != comSimple; };
@@ -3517,7 +3517,7 @@ bool GLCanvas3D::_init_toolbar()
 #if ENABLE_SVG_ICONS
     item.icon_filename = "layers_white.svg";
 #endif // ENABLE_SVG_ICONS
-    item.tooltip = GUI::L_str("Layers editing");
+    item.tooltip = _utf8(L("Layers editing"));
     item.sprite_id = 10;
     item.is_toggable = true;
     item.action_callback = [this]() { if (m_canvas != nullptr) wxPostEvent(m_canvas, SimpleEvent(EVT_GLTOOLBAR_LAYERSEDITING)); };
