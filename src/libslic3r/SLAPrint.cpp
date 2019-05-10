@@ -910,6 +910,10 @@ void SLAPrint::process()
             if(pcfg.embed_object) {
                 // we have will use the the base plate as the model's own pad
                 sla::base_plate(trmesh, bp, float(pad_h), float(lh), thrfn);
+                
+                double penetr = po.m_config.support_head_penetration.getFloat();
+                for(auto& poly : bp)
+                    sla::offset_with_breakstick_holes(poly, 0.5, 10, 0.3, penetr);
             }
 
             pcfg.throw_on_cancel = thrfn;

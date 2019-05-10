@@ -372,54 +372,80 @@ Polygons unify(const Polygons& shapes) {
     return ClipperPaths_to_Slic3rPolygons(result);
 }
 
-void offset_with_breakstick_holes(ExPolygon& expoly,
+// Function to cut tiny connector cavities for a given polygon. The input poly
+// will be offsetted by "padding" and small rectangle shaped cavities will be
+// inserted along the perimeter in every "stride" distance. The stick rectangles
+// will have a with about "stick_width". The input dimensions are in world 
+// measure, not the scaled clipper units.
+void offset_with_breakstick_holes(Polygon& poly,
                                   double padding,
                                   double stride,
-                                  double stick_width)
+                                  double stick_width,
+                                  double penetration)
 {
-    namespace clpr = ClipperLib;
-
-    SVG svg("bridgestick_plate.svg");
-    svg.draw(expoly);
-
-    Polygon& poly = expoly.contour;
-
     // We do the basic offsetting first
     const bool dont_round_edges = false;
     offset(poly, coord_t(padding / SCALING_FACTOR), dont_round_edges);
+    
+    SVG svg("bridgestick_plate.svg");
+    svg.draw(poly);
 
+    Points& pts = poly.points;                  // shorthand
+    Points out; out.reserve(2 * pts.size());    // output polygon points
+    
+    // The connector stick will be a small rectangle with dimensions 
+    // stick_width x (penetration + padding) to have some penetration into the 
+    // input polygon.
+    
+    // stick bottom and right edge dimensions
+    double sbottom = stick_width   / SCALING_FACTOR;
+    double sright  = (penetration + padding) / SCALING_FACTOR;
+    
+    // scaled stride distance
+    double sstride = stride / SCALING_FACTOR;      
     double t = 0;
-    Points& pts = poly.points;
-    Points out; out.reserve(2 * pts.size());
-    double swidth   = stick_width / SCALING_FACTOR;
-    double spadding = padding     / SCALING_FACTOR;
-    double sstride  = stride      / SCALING_FACTOR;
-
-    for(size_t i = pts.size(), j = 0; j < pts.size(); i = j, ++j) {
-        Line l(pts[i], pts[j]);
-        Vec2d dir = l.b.cast<double>() - l.a.cast<double>(); dir.normalize();
+    
+    // process pairs of vertices as an edge, start with the last and first point
+    for(size_t i = pts.size() - 1, j = 0; j < pts.size(); i = j, ++j) {
+        
+        // Get vertices and the direction vectors
+        const Point &a = pts[i], &b = pts[j];
+        Vec2d dir = b.cast<double>() - a.cast<double>(); 
+        double nrm = dir.norm(); dir /= nrm;
         Vec2d dirp(-dir(Y), dir(X));
+       
+        // Insert start point
+        out.emplace_back(a);
+        
+        // dodge the start point, do not make sticks on the joins
+        while(t < sright) t += sright;
+        double tend = nrm - sright;
+        
+        while(t < tend) { // insert the stick on the polygon perimeter
 
-        double tend = l.length() - swidth;
-        if(t > SCALED_EPSILON) out.emplace_back(l.a);
-        while(t <= tend) { // insert the stick on the polygon perimeter
-
-            Point p1 = l.a + (t * dir).cast<coord_t>();
-            Point p2 = p1  + (spadding *  dirp).cast<coord_t>();
-            Point p3 = p2  + (swidth   *  dir ).cast<coord_t>();
-            Point p4 = p3  + (spadding * -dirp).cast<coord_t>();
+            // calculate the stick rectangle vertices and insert them into the
+            // output.
+            Point p1 = a + (t * dir).cast<coord_t>();
+            Point p2 = p1  + (sright * dirp).cast<coord_t>();
+            Point p3 = p2  + (sbottom * dir).cast<coord_t>();
+            Point p4 = p3  + (sright * -dirp).cast<coord_t>();
             out.insert(out.end(), {p1, p2, p3, p4});
-            if(std::abs(t - tend) > SCALED_EPSILON) out.emplace_back(l.b);
-
+            
+            // continue along the perimeter
             t += sstride;
         }
-        t = t - tend;
+        
+        t = t - nrm;
+        
+        // Insert edge endpoint
+        out.emplace_back(b);
     }
-
-    expoly.contour.points.swap(out);
-    expoly.holes.clear();
-
-    svg.draw(expoly);
+    
+    // move the new points
+    out.shrink_to_fit();
+    pts.swap(out);
+    
+    svg.draw(poly);
     svg.Close();
 }
 
@@ -832,9 +858,7 @@ Contour3D create_base_pool(const Polygons &ground_layer,
         if(cfg.embed_object && !obj_self_pad.empty()) {
             // cutting the object shape into the pad with small breakable sticks
 
-            ExPolygon object_base;
-            object_base.contour = obj_self_pad.front();
-            offset_with_breakstick_holes(object_base, 0.5, 10, 0.3);
+            const Polygon& object_base = obj_self_pad.front();
 
             // We can cut a hole in the pad corresponding to the object shape:
             bottom_poly.holes.emplace_back(object_base);

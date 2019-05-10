@@ -25,11 +25,6 @@ Contour3D walls(const Polygon& floor_plate, const Polygon& ceiling,
 
 void offset(ExPolygon& sh, coord_t distance);
 
-void offset_with_breakstick_holes(ExPolygon& expoly,
-                                  double padding,
-                                  double stride,
-                                  double stick_width);
-
 }
 }
 
@@ -52,7 +47,7 @@ int main(const int argc, const char *argv[]) {
     sla::base_plate(model, ground_slice, 0.1f);
     if(ground_slice.empty()) return EXIT_FAILURE;
 
-    ExPolygon gndfirst; gndfirst.contour = ground_slice.front();
+    Polygon gndfirst; gndfirst = ground_slice.front();
     sla::offset_with_breakstick_holes(gndfirst, 0.5, 10, 0.3);
 
     sla::Contour3D mesh;
