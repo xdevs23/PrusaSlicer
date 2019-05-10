@@ -2220,7 +2220,9 @@ bool SLASupportTree::generate(const std::vector<SupportPoint> &support_points,
     return pc == ABORT;
 }
 
-SLASupportTree::SLASupportTree(): m_impl(new Impl()) {}
+SLASupportTree::SLASupportTree(double gnd_lvl): m_impl(new Impl()) {
+    m_impl->ground_level = gnd_lvl;
+}
 
 const TriangleMesh &SLASupportTree::merged_mesh() const
 {

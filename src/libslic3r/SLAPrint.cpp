@@ -828,10 +828,18 @@ void SLAPrint::process()
     auto support_tree = [this, ostepd](SLAPrintObject& po)
     {
         if(!po.m_supportdata) return;
+        
+        sla::PoolConfig pcfg = make_pool_config(po.m_config);
+        
+        if(pcfg.embed_object)
+            po.m_supportdata->emesh.ground_level() += pcfg.min_wall_thickness_mm;
 
         if(!po.m_config.supports_enable.getBool()) {
+            
             // Generate empty support tree. It can still host a pad
-            po.m_supportdata->support_tree_ptr.reset(new SLASupportTree());
+            po.m_supportdata->support_tree_ptr.reset(
+                    new SLASupportTree(po.m_supportdata->emesh.ground_level()));
+            
             return;
         }
 
@@ -853,11 +861,6 @@ void SLAPrint::process()
 
         ctl.stopcondition = [this](){ return canceled(); };
         ctl.cancelfn = [this]() { throw_if_canceled(); };
-        
-        sla::PoolConfig pcfg = make_pool_config(po.m_config);
-        
-        if(pcfg.embed_object)
-            po.m_supportdata->emesh.ground_level() += pcfg.min_wall_thickness_mm;
         
         po.m_supportdata->support_tree_ptr.reset(
                     new SLASupportTree(po.m_supportdata->support_points,
@@ -907,14 +910,18 @@ void SLAPrint::process()
             // This call can get pretty time consuming
             auto thrfn = [this](){ throw_if_canceled(); };
 
-            if(pcfg.embed_object) {
+            if(!po.m_config.supports_enable.getBool() || pcfg.embed_object) {
                 // we have will use the the base plate as the model's own pad
                 sla::base_plate(trmesh, bp, float(pad_h), float(lh), thrfn);
-                
-                double penetr = po.m_config.support_head_penetration.getFloat();
-                for(auto& poly : bp)
-                    sla::offset_with_breakstick_holes(poly, 0.5, 10, 0.3, penetr);
             }
+            
+            if(pcfg.embed_object) {
+                double penetr = 
+                        po.m_config.support_head_penetration.getFloat();
+                
+                for(auto& poly : bp) 
+                    sla::offset_with_breakstick_holes(poly, 0.5, 10, 0.3, penetr);
+            }                
 
             pcfg.throw_on_cancel = thrfn;
             po.m_supportdata->support_tree_ptr->add_pad(bp, pcfg);

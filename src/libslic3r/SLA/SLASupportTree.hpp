@@ -161,7 +161,7 @@ class SLASupportTree {
 
 public:
 
-    SLASupportTree();
+    SLASupportTree(double ground_level = 0.0);
 
     SLASupportTree(const std::vector<SupportPoint>& pts,
                    const EigenMesh3D& em,
