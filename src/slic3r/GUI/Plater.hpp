@@ -151,6 +151,7 @@ public:
     void update_ui_from_settings();
 
     void select_all();
+    void deselect_all();
     void remove(size_t obj_idx);
     void reset();
     void reset_with_confirm();
