@@ -453,8 +453,10 @@ void MainFrame::init_menubar()
     #endif
         wxMenuItem* item_select_all = append_menu_item(editMenu, wxID_ANY, _(L("&Select all")) + sep + GUI::shortkey_ctrl_prefix() + sep_space + "A", _(L("Selects all objects")),
             [this](wxCommandEvent&) { if (m_plater != nullptr) m_plater->select_all(); }, "");
+#if !DISABLE_DESELECT_ALL_MENU_ITEM
         wxMenuItem* item_deselect_all = append_menu_item(editMenu, wxID_ANY, _(L("D&eselect all")) + sep + "Esc", _(L("Deselects all objects")),
             [this](wxCommandEvent&) { if (m_plater != nullptr) m_plater->deselect_all(); }, "");
+#endif // !DISABLE_DESELECT_ALL_MENU_ITEM
         editMenu->AppendSeparator();
         wxMenuItem* item_delete_sel = append_menu_item(editMenu, wxID_ANY, _(L("&Delete selected")) + sep + hotkey_delete, _(L("Deletes the current selection")),
             [this](wxCommandEvent&) { m_plater->remove_selected(); }, menu_icon("remove_menu"));
@@ -469,7 +471,9 @@ void MainFrame::init_menubar()
             [this](wxCommandEvent&) { m_plater->paste_from_clipboard(); }, menu_icon("paste_menu"));
 
         Bind(wxEVT_UPDATE_UI, [this](wxUpdateUIEvent& evt) { evt.Enable(can_select()); }, item_select_all->GetId());
+#if !DISABLE_DESELECT_ALL_MENU_ITEM
         Bind(wxEVT_UPDATE_UI, [this](wxUpdateUIEvent& evt) { evt.Enable(can_deselect()); }, item_deselect_all->GetId());
+#endif // !DISABLE_DESELECT_ALL_MENU_ITEM
         Bind(wxEVT_UPDATE_UI, [this](wxUpdateUIEvent& evt) { evt.Enable(can_delete()); }, item_delete_sel->GetId());
         Bind(wxEVT_UPDATE_UI, [this](wxUpdateUIEvent& evt) { evt.Enable(can_delete_all()); }, item_delete_all->GetId());
         Bind(wxEVT_UPDATE_UI, [this](wxUpdateUIEvent& evt) { evt.Enable(m_plater->can_copy()); }, item_copy->GetId());
