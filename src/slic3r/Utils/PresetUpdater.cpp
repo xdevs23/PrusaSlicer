@@ -224,8 +224,12 @@ void PresetUpdater::priv::sync_version() const
 				% http_status
 				% error;
 		})
-		.on_complete([&](std::string body, unsigned /* http_status */) {
-			boost::trim(body);
+		.on_complete([&](std::string /*body*/, unsigned /* http_status */) {
+			// boost::trim(body);
+
+			// FIXME: Mock!
+			std::string body = "1.45";
+
 			BOOST_LOG_TRIVIAL(info) << boost::format("Got %1% online version: `%2%`. Sending to GUI thread...") % SLIC3R_APP_NAME % body;
 
 			wxCommandEvent* evt = new wxCommandEvent(EVT_SLIC3R_VERSION_ONLINE);
